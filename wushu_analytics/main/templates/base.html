@@ -569,6 +569,71 @@
             color: var(--text-primary);
         }
 
+        /* Simple Loading Modal */
+        .loading-modal {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--primary-color);
+            border-radius: 1rem;
+            padding: 1.5rem 2rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1050;
+            min-width: 250px;
+        }
+
+        .loading-modal.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .loading-spinner i {
+            font-size: 1.2rem;
+            color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            color: white;
+        }
+
+        .loading-text h6 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .loading-text p {
+            margin: 0;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Light theme overrides */
+        [data-theme="light"] .loading-modal {
+            background: #0088cc;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
         /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 8px;
@@ -650,6 +715,9 @@
                     <button class="btn btn-outline-light" id="themeToggleBtn" title="Переключить тему">
                         <i class="bi bi-sun-fill" id="themeIcon"></i>
                     </button>
+                    <button class="btn btn-outline-light" id="parserToggleBtn" title="Запустить парсер">
+                        <i class="bi bi-arrow-clockwise" id="parserIcon"></i>
+                    </button>
                     <a href="#" class="btn-primary-custom">
                         <i class="bi bi-plus-circle"></i>
                         Добавить
@@ -673,6 +741,17 @@
         <div class="content-wrapper">
             {% block content %}
             {% endblock %}
+        </div>
+    </div>
+
+    <!-- Simple Loading Modal -->
+    <div class="loading-modal" id="loadingModal">
+        <div class="loading-spinner">
+            <i class="bi bi-arrow-clockwise"></i>
+        </div>
+        <div class="loading-text">
+            <h6>Данные обновляются</h6>
+            <p>Пожалуйста, подождите...</p>
         </div>
     </div>
 
@@ -753,6 +832,26 @@
                 themeIcon.classList.add('bi-moon-fill');
             }
         }
+
+        // Parser functionality
+        const parserToggleBtn = document.getElementById('parserToggleBtn');
+        const parserIcon = document.getElementById('parserIcon');
+        const loadingModal = document.getElementById('loadingModal');
+
+        parserToggleBtn.addEventListener('click', function() {
+            // Show loading modal
+            loadingModal.classList.add('show');
+            parserIcon.classList.add('parser-spin');
+            
+            // Simulate parser completion (replace with real parser call)
+            setTimeout(() => {
+                loadingModal.classList.remove('show');
+                parserIcon.classList.remove('parser-spin');
+                
+                // Show simple success message
+                alert('Данные успешно обновлены!');
+            }, 3000);
+        });
     </script>
 </body>
 </html>
