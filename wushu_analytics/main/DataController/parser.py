@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import re
 import ssl
+from datetime import datetime
 from .dataWriter import write_competitions
  
 # Константы
@@ -23,6 +24,14 @@ def fetch_page(url):
     response = requests.get(url, headers=HEADERS, verify=False)
     print('Page fetched')
     return response.text
+
+
+def convert_date(date_str):
+    """Конвертирует дату из DD.MM.YYYY в YYYY-MM-DD"""
+    try:
+        return datetime.strptime(date_str, '%d.%m.%Y').strftime('%Y-%m-%d')
+    except ValueError:
+        return None
  
  
 def parse_competitions():
@@ -71,8 +80,12 @@ def parse_competitions():
         full_link = BASE_URL + link if link else ""
  
         city = cells[1].text.strip()
-        start_date = cells[2].text.strip()
-        end_date = cells[3].text.strip()
+        start_date = convert_date(cells[2].text.strip())
+        end_date = convert_date(cells[3].text.strip())
+        
+        # Пропускаем если даты не сконвертировались
+        if not start_date or not end_date:
+            continue
  
         competitions.append({
             "name": name,
@@ -149,4 +162,5 @@ def parse_competition_results(start_id, end_id):
 def sync_all_data(request):
     competitions = parse_competitions()
     write_competitions(competitions)
+    
     print("Competitions written")

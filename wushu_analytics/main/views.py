@@ -22,4 +22,10 @@ def athletes(request):
 def update_data(request):
     """Запускает синхронизацию данных с парсером"""
     from .DataController.parser import sync_all_data
-    return sync_all_data(request)
+    from django.http import JsonResponse
+    
+    try:
+        sync_all_data(request)
+        return JsonResponse({'status': 'success', 'message': 'Данные успешно обновлены'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
