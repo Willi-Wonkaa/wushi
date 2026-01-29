@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import re
 import ssl
+from dataWriter import write_competitions
 
 # Константы
 BASE_URL = "https://wushujudges.ru"
@@ -12,14 +13,15 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 MAX_RETRIES = 3
 SLEEP_TIME = 0.5
 
+
 # Отключаем проверку SSL сертификатов (только для разработки)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def fetch_page(url):
-    print('fetching page: ', url)
-    response = requests.get(url, verify=False)
-    print('34r34r')
+    print('fetching page: ', url)    
+    write_competitions(parse_competitions())
+    print('Writing done')
     return response.text
 
 # Убираем выполнение кода при импорте
