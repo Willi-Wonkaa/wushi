@@ -80,8 +80,12 @@ def parse_competitions():
         full_link = BASE_URL + link if link else ""
  
         city = cells[1].text.strip()
-        start_date = cells[2].text.strip()
-        end_date = cells[3].text.strip()
+        start_date = convert_date(cells[2].text.strip())
+        end_date = convert_date(cells[3].text.strip())
+        
+        # Пропускаем если даты не сконвертировались
+        if not start_date or not end_date:
+            continue
  
         competitions.append({
             "name": name,

@@ -64,6 +64,6 @@ def update_data(request):
     
     try:
         sync_all_data(request)
-        return JsonResponse({'status': 'success', 'message': 'Данные успешно обновлены'})
+        return JsonResponse({'success': True, 'message': 'Данные успешно обновлены'})
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
+        return JsonResponse({'success': False, 'message': str(e)})
