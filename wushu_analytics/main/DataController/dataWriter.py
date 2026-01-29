@@ -1,7 +1,9 @@
-from models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
+from ..models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
+
 
 def write_competitions(competitions):
     for competition in competitions:
+        print(competition)
         Competition.objects.create(
             name=competition['name'],
             sity=competition['city'],

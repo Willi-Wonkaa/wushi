@@ -3,16 +3,6 @@ from django.http import JsonResponse
 import sys
 import os
 
-# Добавляем путь к папке DataController
-sys.path.append(os.path.join(os.path.dirname(__file__), 'DataController'))
-
-try:
-    from parser import fetch_page, parse_competitions
-except ImportError:
-    def fetch_page(url):
-        return f"Parser not available. URL: {url}"
-    def parse_competitions():
-        return []
 
 def dashboard(request):
     return render(request, "dashboard.html")
@@ -29,23 +19,7 @@ def regions(request):
 def athletes(request):
     return render(request, "athletes.html")
 
-def button_():
-    return parse_competitions()
-
-def run_parser(request):
-    """Запуск парсера данных"""
-    if request.method == 'POST':
-        try:
-            result = button_()
-            return JsonResponse({
-                'success': True,
-                'message': 'Данные успешно обновлены',
-                'data_length': len(result) if result else 0
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Ошибка: {str(e)}'
-            })
-    
-    return JsonResponse({'error': 'Method not allowed'}, status=405)
+def update_data(request):
+    """Запускает синхронизацию данных с парсером"""
+    from .DataController.parser import sync_all_data
+    return sync_all_data(request)

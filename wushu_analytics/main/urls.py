@@ -11,7 +11,7 @@ urlpatterns = [
     path('competitions/', views.competitions, name='competitions'),
     path('regions/', views.regions, name='regions'),
     path('athletes/', views.athletes, name='athletes'),
-    path('run-parser/', views.run_parser, name='run_parser'),
+    path('run-parser/', views.update_data, name='run_parser'),
 
 ]
 
