@@ -839,19 +839,106 @@
         const loadingModal = document.getElementById('loadingModal');
 
         parserToggleBtn.addEventListener('click', function() {
+            startParser();
+        });
+
+        async function startParser() {
+            const parserIcon = document.getElementById('parserIcon');
+            const loadingModal = document.getElementById('loadingModal');
+            
             // Show loading modal
             loadingModal.classList.add('show');
             parserIcon.classList.add('parser-spin');
             
-            // Simulate parser completion (replace with real parser call)
-            setTimeout(() => {
+            try {
+                // Call the parser API
+                const response = await fetch('/run-parser/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', 'Успешно!', result.message);
+                } else {
+                    showNotification('error', 'Ошибка', result.message);
+                }
+            } catch (error) {
+                console.error('Parser error:', error);
+                showNotification('error', 'Ошибка', 'Произошла ошибка при запуске парсера');
+            } finally {
+                // Hide loading modal
                 loadingModal.classList.remove('show');
                 parserIcon.classList.remove('parser-spin');
-                
-                // Show simple success message
-                alert('Данные успешно обновлены!');
-            }, 3000);
-        });
+            }
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Simple notification function
+        function showNotification(type, title, message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#28a745' : '#dc3545'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 9999;
+                min-width: 300px;
+                transform: translateX(400px);
+                transition: transform 0.3s ease;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 1.2rem;">
+                        ${type === 'success' ? '✓' : '✗'}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600;">${title}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">${message}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Hide notification after 5 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(400px)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 5000);
+        }
     </script>
 </body>
 </html>
