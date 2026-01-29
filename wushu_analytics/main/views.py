@@ -4,13 +4,15 @@ import sys
 import os
 
 # Добавляем путь к папке DataController
-sys.path.append(os.path.join(os.path.dirname(__file__), 'templates', 'DataController'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'DataController'))
 
 try:
-    from parser import fetch_page
+    from parser import fetch_page, parse_competitions
 except ImportError:
     def fetch_page(url):
         return f"Parser not available. URL: {url}"
+    def parse_competitions():
+        return []
 
 def dashboard(request):
     return render(request, "dashboard.html")
@@ -28,7 +30,7 @@ def athletes(request):
     return render(request, "athletes.html")
 
 def button_():
-    return fetch_page("https://wushujudges.ru")
+    return parse_competitions()
 
 def run_parser(request):
     """Запуск парсера данных"""
