@@ -1,0 +1,512 @@
+{% extends 'base.html' %}
+
+{% block title %}Аналитика - Wushu Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Аналитика</h1>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-calendar"></i> Период
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download"></i> Экспорт
+            </button>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Всего соревнований
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">156</div>
+                            <div class="text-xs text-muted">
+                                <i class="bi bi-arrow-up"></i> +12% за месяц
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-trophy fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Всего участников
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">3,847</div>
+                            <div class="text-xs text-muted">
+                                <i class="bi bi-arrow-up"></i> +8% за месяц
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-people fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Активные регионы
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">42</div>
+                            <div class="text-xs text-muted">
+                                <i class="bi bi-arrow-up"></i> +3 за месяц
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Средний рейтинг
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">8.2</div>
+                            <div class="text-xs text-muted">
+                                <i class="bi bi-arrow-up"></i> +0.3 за месяц
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-star fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Динамика соревнований</h6>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active">Месяц</button>
+                        <button type="button" class="btn btn-outline-secondary">Квартал</button>
+                        <button type="button" class="btn btn-outline-secondary">Год</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="competitionsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Распределение по дисциплинам</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="disciplinesChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Топ регионов по участникам</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="regionsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Возрастные категории</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="ageChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Statistics -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Детальная статистика</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-funnel"></i> Фильтр
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">Все дисциплины</a></li>
+                            <li><a class="dropdown-item" href="#">Таолу</a></li>
+                            <li><a class="dropdown-item" href="#">Саньда</a></li>
+                            <li><a class="dropdown-item" href="#">Цюаньшу</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="analyticsTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Регион</th>
+                                    <th>Соревнования</th>
+                                    <th>Участники</th>
+                                    <th>Золотые медали</th>
+                                    <th>Серебряные медали</th>
+                                    <th>Бронзовые медали</th>
+                                    <th>Общий счет</th>
+                                    <th>Тренд</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Москва</td>
+                                    <td>24</td>
+                                    <td>456</td>
+                                    <td>18</td>
+                                    <td>12</td>
+                                    <td>8</td>
+                                    <td>38</td>
+                                    <td><span class="text-success"><i class="bi bi-arrow-up"></i> +15%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Санкт-Петербург</td>
+                                    <td>18</td>
+                                    <td>324</td>
+                                    <td>14</td>
+                                    <td>10</td>
+                                    <td>6</td>
+                                    <td>30</td>
+                                    <td><span class="text-success"><i class="bi bi-arrow-up"></i> +8%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Московская область</td>
+                                    <td>15</td>
+                                    <td>289</td>
+                                    <td>12</td>
+                                    <td>8</td>
+                                    <td>5</td>
+                                    <td>25</td>
+                                    <td><span class="text-success"><i class="bi bi-arrow-up"></i> +12%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Свердловская область</td>
+                                    <td>12</td>
+                                    <td>198</td>
+                                    <td>8</td>
+                                    <td>6</td>
+                                    <td>4</td>
+                                    <td>18</td>
+                                    <td><span class="text-danger"><i class="bi bi-arrow-down"></i> -3%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Республика Татарстан</td>
+                                    <td>10</td>
+                                    <td>176</td>
+                                    <td>7</td>
+                                    <td>5</td>
+                                    <td>3</td>
+                                    <td>15</td>
+                                    <td><span class="text-success"><i class="bi bi-arrow-up"></i> +5%</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Лучшие спортсмены</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Иванов Александр</h6>
+                                <small class="text-muted">Москва • Таолу</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">285 очков</span>
+                                <div class="small text-success">+12%</div>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Петрова Мария</h6>
+                                <small class="text-muted">СПб • Саньда</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">278 очков</span>
+                                <div class="small text-success">+8%</div>
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Сидоров Дмитрий</h6>
+                                <small class="text-muted">Екатеринбург • Цюаньшу</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">265 очков</span>
+                                <div class="small text-danger">-2%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Рост по месяцам</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="growthChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Качество соревнований</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small>Организация</small>
+                            <small class="text-muted">9.2/10</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 92%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small>Судейство</small>
+                            <small class="text-muted">8.7/10</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: 87%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small>Условия</small>
+                            <small class="text-muted">8.9/10</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 89%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small>Участники</small>
+                            <small class="text-muted">9.5/10</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: 95%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Competitions Chart
+const competitionsCtx = document.getElementById('competitionsChart').getContext('2d');
+const competitionsChart = new Chart(competitionsCtx, {
+    type: 'line',
+    data: {
+        labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
+        datasets: [{
+            label: 'Соревнования',
+            data: [8, 12, 15, 18, 22, 25, 28, 24, 20, 18, 15, 12],
+            borderColor: '#4e73df',
+            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+            tension: 0.3,
+            fill: true
+        }, {
+            label: 'Участники',
+            data: [120, 180, 220, 280, 320, 380, 420, 360, 300, 260, 220, 180],
+            borderColor: '#1cc88a',
+            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Соревнования'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Участники'
+                },
+                grid: {
+                    drawOnChartArea: false,
+                },
+            },
+        }
+    }
+});
+
+// Disciplines Chart
+const disciplinesCtx = document.getElementById('disciplinesChart').getContext('2d');
+const disciplinesChart = new Chart(disciplinesCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Таолу', 'Саньда', 'Цюаньшу', 'Тайцзи', 'Другие'],
+        datasets: [{
+            data: [35, 28, 20, 12, 5],
+            backgroundColor: [
+                '#4e73df',
+                '#1cc88a',
+                '#36b9cc',
+                '#f6c23e',
+                '#e74a3b'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Regions Chart
+const regionsCtx = document.getElementById('regionsChart').getContext('2d');
+const regionsChart = new Chart(regionsCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Москва', 'СПб', 'МО', 'Свердловск', 'Татарстан', 'Новосибирск'],
+        datasets: [{
+            label: 'Участники',
+            data: [456, 324, 289, 198, 176, 145],
+            backgroundColor: '#4e73df'
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// Age Chart
+const ageCtx = document.getElementById('ageChart').getContext('2d');
+const ageChart = new Chart(ageCtx, {
+    type: 'pie',
+    data: {
+        labels: ['8-12 лет', '13-16 лет', '17-20 лет', '21-25 лет', '26+ лет'],
+        datasets: [{
+            data: [15, 25, 30, 20, 10],
+            backgroundColor: [
+                '#36b9cc',
+                '#1cc88a',
+                '#4e73df',
+                '#f6c23e',
+                '#e74a3b'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Growth Chart
+const growthCtx = document.getElementById('growthChart').getContext('2d');
+const growthChart = new Chart(growthCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн'],
+        datasets: [{
+            label: 'Рост (%)',
+            data: [5, 8, 12, 15, 18, 22],
+            backgroundColor: '#1cc88a'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
