@@ -66,10 +66,12 @@ def competitions(request):
             # Парсим детальную информацию о соревновании
             detail_data = None
             has_current_categories = False
+            has_next_categories = False
             if competition.link:
                 detail_data = parse_competition_detail(competition.link)
                 if detail_data and detail_data.get('categories'):
                     has_current_categories = any(cat.get('status') == 'current' for cat in detail_data['categories'])
+                    has_next_categories = any(cat.get('status') == 'next' for cat in detail_data['categories'])
             
             # Определяем статус соревнования
             today = date.today()
@@ -85,6 +87,7 @@ def competitions(request):
                 'detail_data': detail_data,
                 'competition_status': competition_status,
                 'has_current_categories': has_current_categories,
+                'has_next_categories': has_next_categories,
                 'selected': True
             }
             return render(request, "competition_detail.html", context)

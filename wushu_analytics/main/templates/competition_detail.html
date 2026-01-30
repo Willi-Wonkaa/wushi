@@ -85,6 +85,61 @@
                                             {% if not has_current_categories %}
                                                 <p class="text-muted">Нет идущих сейчас категорий</p>
                                             {% endif %}
+
+                        <!-- Next Categories -->
+                        {% if has_next_categories %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="mb-3">⏭️ Следующие категории</h6>
+                                    
+                                    {% for category in detail_data.categories %}
+                                        {% if category.status == 'next' %}
+                                            <div class="card mb-3">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-0">{{ category.name }}</h6>
+                                                        <small class="text-muted">{{ category.time_range }}</small>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge bg-info">следующая</span>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    {% if category.participants %}
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>#</th>
+                                                                        <th>Имя</th>
+                                                                        <th>Регион</th>
+                                                                        <th>Время</th>
+                                                                        <th>Оценка</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {% for participant in category.participants %}
+                                                                        <tr>
+                                                                            <td>{{ participant.place }}</td>
+                                                                            <td>{{ participant.name }}</td>
+                                                                            <td>{{ participant.region }}</td>
+                                                                            <td>{{ participant.start_time }}</td>
+                                                                            <td>{{ participant.score }}</td>
+                                                                        </tr>
+                                                                    {% endfor %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    {% else %}
+                                                        <p class="text-muted">Нет участников</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -108,6 +163,8 @@
                                                     <span class="badge bg-success">идет</span>
                                                 {% elif category.status == 'past' %}
                                                     <span class="badge bg-secondary">закончилась</span>
+                                                {% elif category.status == 'next' %}
+                                                    <span class="badge bg-info">следующая</span>
                                                 {% else %}
                                                     <span class="badge bg-warning">еще не началась</span>
                                                 {% endif %}

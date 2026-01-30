@@ -198,7 +198,13 @@ def determine_category_status(time_range, current_time, participants, category_n
     if not participants:
         return "future"  # Нет участников - категория еще не началась
     
-    # Проверяем все ли участники получили оценки (оценка "-" означает что еще не прошло)
+    # Проверяем есть ли начавшиеся выступления (оценка "-" означает что еще не прошло)
+    participants_started = [p for p in participants 
+                           if p.get("score") 
+                           and p.get("score").strip() != "" 
+                           and p.get("score").strip() != "-"]
+    
+    # Проверяем все ли участники получили оценки
     participants_with_mark = [p for p in participants 
                              if p.get("score") 
                              and p.get("score").strip() != "" 
@@ -206,6 +212,10 @@ def determine_category_status(time_range, current_time, participants, category_n
     
     if len(participants_with_mark) == len(participants):
         return "past"  # Все получили оценки - категория завершена
+    
+    # Если есть хотя бы одно начавшееся выступление - категория идет
+    if participants_started:
+        return "current"
     
     # Извлекаем номер ковра из названия категории
     carpet_number = extract_carpet_number(category_name)
@@ -231,14 +241,14 @@ def determine_category_status(time_range, current_time, participants, category_n
         if not previous_completed:
             return "future"  # Предыдущая категория еще не завершена
         
-        # Если предыдущая категория завершена, эта идет
-        return "current"
+        # Если предыдущая категория завершена, эта скоро начнется
+        return "next"
     
     # Если не удалось определить номер ковра, используем старую логику
-    if participants_with_mark:
-        return "current"  # Есть оценки - категория идет
+    if participants_started:
+        return "current"  # Есть начавшиеся выступления
     else:
-        return "future"   # Нет оценок - категория скоро
+        return "future"   # Нет начавшихся выступлений
 
 
 def extract_carpet_number(category_name):
