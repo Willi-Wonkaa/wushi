@@ -1,68 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Соревнования - Wushu Analytics{% endblock %}
+{% block title %}{{ competition.name }} - Wushu Analytics{% endblock %}
 
-{% block page_title %}Соревнования{% endblock %}
+{% block page_title %}{{ competition.name }}{% endblock %}
 
 {% block content %}
-{% if not selected %}
-<!-- Competition Selection -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Выберите соревнование</h5>
-            </div>
-            <div class="card-body">
-                {% if competitions %}
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Название</th>
-                                    <th>Даты</th>
-                                    <th>Место</th>
-                                    <th>Статус</th>
-                                    <th>Действие</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for comp in competitions %}
-                                <tr>
-                                    <td class="fw-bold">{{ comp.name }}</td>
-                                    <td>{{ comp.start_date|date:"d.m.Y" }} - {{ comp.end_date|date:"d.m.Y" }}</td>
-                                    <td><i class="bi bi-geo-alt"></i> {{ comp.sity }}</td>
-                                    <td>
-                                        {% if comp.start_date > today %}
-                                            <span class="badge-custom badge-warning">скоро</span>
-                                        {% elif comp.end_date < today %}
-                                            <span class="badge-custom badge-secondary">прошли</span>
-                                        {% else %}
-                                            <span class="badge-custom badge-success">идет</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="?competition_id={{ comp.id }}" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-eye"></i> Просмотр
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-calendar-x display-4 text-muted"></i>
-                        <p class="text-muted mt-2">Соревнования не найдены</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-{% else %}
-<!-- Competition Detail -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -71,7 +13,7 @@
                     <h5 class="card-title mb-0">{{ competition.name }}</h5>
                     <small class="text-muted">{{ competition.sity }} | {{ competition.start_date|date:"d.m.Y" }} - {{ competition.end_date|date:"d.m.Y" }}</small>
                 </div>
-                <a href="?competition_id=" class="btn btn-outline-secondary">
+                <a href="/competitions/" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> К списку
                 </a>
             </div>
@@ -210,5 +152,4 @@
         </div>
     </div>
 </div>
-{% endif %}
 {% endblock %}

@@ -102,8 +102,91 @@ def parse_competitions():
     return competitions
  
  
+def parse_competition_detail(competition_url):
+    """Парсит детальную информацию о соревновании"""
+    print(f'Parsing competition detail from: {competition_url}')
+    
+    html = fetch_page(competition_url)
+    if not html:
+        print("Failed to fetch competition page")
+        return None
+    
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # Получаем название соревнования
+    title_tag = soup.find("h1") or soup.find("title")
+    competition_name = title_tag.text.strip().split(" | ")[-1] if title_tag else "Unknown"
+    
+    # Ищем регламент
+    regulation = ""
+    regulation_block = soup.find("div", class_="regulation") or soup.find("div", {"id": "regulation"})
+    if regulation_block:
+        regulation = regulation_block.get_text(strip=True)
+    
+    # Парсим категории по коврам
+    categories = []
+    
+    # Ищем все блоки с категориями
+    for category_block in soup.find_all("div", class_="d-flex"):
+        category_name_tag = category_block.find("h3")
+        if not category_name_tag:
+            continue
+        
+        raw_category = category_name_tag.text.strip().replace("\n", " ")
+        time_range = category_block.find("p").text.strip() if category_block.find("p") else ""
+        
+        # Определяем статус категории
+        status = "future"  # по умолчанию "скоро"
+        # TODO: добавить логику определения текущих категорий
+        
+        table = category_block.find_next("table")
+        if not table:
+            continue
+        
+        headers = [th.text.strip() for th in table.find_all("th")]
+        rows = [[td.text.strip() for td in tr.find_all("td")] for tr in table.find_all("tr") if tr.find_all("td")]
+        
+        participants = []
+        if "#" in headers and "Имя" in headers:
+            for row in rows:
+                if len(row) < 5 or not row[1] or not row[2]:
+                    continue
+                if row[0] == competition_name:
+                    continue
+                
+                participants.append({
+                    "place": row[0],
+                    "name": row[1],
+                    "region": row[2],
+                    "start_time": row[3],
+                    "score": row[4] if len(row) > 4 else ""
+                })
+        
+        categories.append({
+            "name": raw_category,
+            "time_range": time_range,
+            "status": status,
+            "participants": participants
+        })
+    
+    return {
+        "name": competition_name,
+        "regulation": regulation,
+        "categories": categories
+    }
+
+
+def split_category_name(raw_name):
+    """Разделяет название категории на ковер и название категории"""
+    parts = raw_name.split("Ковер")
+    if len(parts) > 1:
+        mat = parts[0].strip() + "Ковер"
+        category_name = parts[1].strip()
+        return mat, category_name
+    return "", raw_name
+
+
 def parse_competition_results(start_id, end_id):
-    """Парсит результаты соревнований в заданном диапазоне ID"""
     results = []
  
     for comp_id in range(start_id, end_id + 1):

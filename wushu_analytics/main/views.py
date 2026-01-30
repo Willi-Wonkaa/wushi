@@ -49,7 +49,54 @@ def analytics(request):
     return render(request, "analytics.html")
 
 def competitions(request):
-    return render(request, "competitions.html")
+    """Страница соревнований с выбором конкретного соревнования"""
+    from .models import Competition
+    from .DataController.parser import parse_competition_detail
+    from datetime import date
+    
+    # Получаем все соревнования, отсортированные по дате
+    all_competitions = Competition.objects.all().order_by('-start_date')
+    
+    # Если есть параметр competition_id, показываем детальную страницу
+    competition_id = request.GET.get('competition_id')
+    if competition_id:
+        try:
+            competition = Competition.objects.get(id=competition_id)
+            
+            # Парсим детальную информацию о соревновании
+            detail_data = None
+            has_current_categories = False
+            if competition.link:
+                detail_data = parse_competition_detail(competition.link)
+                if detail_data and detail_data.get('categories'):
+                    has_current_categories = any(cat.get('status') == 'current' for cat in detail_data['categories'])
+            
+            # Определяем статус соревнования
+            today = date.today()
+            if competition.start_date <= today <= competition.end_date:
+                competition_status = "active"
+            elif competition.start_date > today:
+                competition_status = "upcoming"
+            else:
+                competition_status = "completed"
+            
+            context = {
+                'competition': competition,
+                'detail_data': detail_data,
+                'competition_status': competition_status,
+                'has_current_categories': has_current_categories,
+                'selected': True
+            }
+            return render(request, "competition_detail.html", context)
+        except Competition.DoesNotExist:
+            pass
+    
+    context = {
+        'competitions': all_competitions,
+        'selected': False,
+        'today': date.today()
+    }
+    return render(request, "competitions.html", context)
 
 def regions(request):
     return render(request, "regions.html")
