@@ -7,6 +7,14 @@ class Competition(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'sity', 'start_date', 'end_date'],
+                name='unique_competition'
+            )
+        ]
+    
     def __str__(self):
         return self.name
 
@@ -14,11 +22,19 @@ class Participant(models.Model):
     name = models.CharField(max_length=255)
     sity = models.CharField(max_length=100)
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'sity'],
+                name='unique_participant'
+            )
+        ]
+    
     def __str__(self):
         return self.name
 
 class DisciplineCategory(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     
     def __str__(self):
         return self.name
@@ -27,6 +43,14 @@ class AgeCategory(models.Model):
     min_ages = models.IntegerField()
     max_ages = models.IntegerField()
     sex = models.CharField(max_length=10)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['min_ages', 'max_ages', 'sex'],
+                name='unique_age_category'
+            )
+        ]
     
     def __str__(self):
         return f"{self.sex} {self.min_ages}-{self.max_ages} лет"
@@ -41,6 +65,14 @@ class Performance(models.Model):
     est_start_datetime = models.DateTimeField()
     real_start_datetime = models.DateTimeField(null=True, blank=True)
     mark = models.FloatField(null=True, blank=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['competition', 'participant', 'ages_category', 'disciplines_category'],
+                name='unique_performance'
+            )
+        ]
     
     def __str__(self):
         return f"{self.participant.name} - {self.origin_title}"
