@@ -64,6 +64,7 @@ class Performance(models.Model):
     disciplines_category = models.ForeignKey(DisciplineCategory, on_delete=models.SET_NULL, null=True)
     est_start_datetime = models.DateTimeField()
     real_start_datetime = models.DateTimeField(null=True, blank=True)
+    real_end_datetime = models.DateTimeField(null=True, blank=True)
     mark = models.FloatField(null=True, blank=True)
     
     class Meta:

@@ -80,7 +80,7 @@
                                 {% for comp in current_competitions %}
                                 <tr>
                                     <td>
-                                        <a href="/competitions/" class="fw-bold text-decoration-none">
+                                        <a href="/competitions/?competition_id={{ comp.id }}" class="fw-bold text-decoration-none">
                                             {{ comp.name }}
                                         </a>
                                     </td>
@@ -126,7 +126,7 @@
                                 {% for item in all_competitions %}
                                 <tr>
                                     <td>
-                                        <a href="/competitions/" class="fw-bold text-decoration-none">
+                                        <a href="/competitions/?competition_id={{ item.competition.id }}" class="fw-bold text-decoration-none">
                                             {{ item.competition.name }}
                                         </a>
                                     </td>

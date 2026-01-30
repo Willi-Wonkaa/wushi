@@ -125,6 +125,10 @@ def parse_competition_detail(competition_url):
     
     # Парсим категории по коврам
     categories = []
+    current_time = datetime.now()
+    
+    # Ищем все блоки с категориями и сначала собираем их без статусов
+    temp_categories = []
     
     # Ищем все блоки с категориями
     for category_block in soup.find_all("div", class_="d-flex"):
@@ -135,10 +139,7 @@ def parse_competition_detail(competition_url):
         raw_category = category_name_tag.text.strip().replace("\n", " ")
         time_range = category_block.find("p").text.strip() if category_block.find("p") else ""
         
-        # Определяем статус категории
-        status = "future"  # по умолчанию "скоро"
-        # TODO: добавить логику определения текущих категорий
-        
+        # Сначала получаем участников
         table = category_block.find_next("table")
         if not table:
             continue
@@ -162,11 +163,27 @@ def parse_competition_detail(competition_url):
                     "score": row[4] if len(row) > 4 else ""
                 })
         
-        categories.append({
+        temp_categories.append({
             "name": raw_category,
             "time_range": time_range,
-            "status": status,
             "participants": participants
+        })
+    
+    # Теперь определяем статусы для всех категорий
+    for temp_cat in temp_categories:
+        status = determine_category_status(
+            temp_cat["time_range"], 
+            current_time, 
+            temp_cat["participants"], 
+            temp_cat["name"], 
+            temp_categories
+        )
+        
+        categories.append({
+            "name": temp_cat["name"],
+            "time_range": temp_cat["time_range"],
+            "status": status,
+            "participants": temp_cat["participants"]
         })
     
     return {
@@ -174,6 +191,73 @@ def parse_competition_detail(competition_url):
         "regulation": regulation,
         "categories": categories
     }
+
+
+def determine_category_status(time_range, current_time, participants, category_name, all_categories):
+    """Определяет статус категории на основе реального времени и последовательности"""
+    if not participants:
+        return "future"  # Нет участников - категория еще не началась
+    
+    # Проверяем все ли участники получили оценки (оценка "-" означает что еще не прошло)
+    participants_with_mark = [p for p in participants 
+                             if p.get("score") 
+                             and p.get("score").strip() != "" 
+                             and p.get("score").strip() != "-"]
+    
+    if len(participants_with_mark) == len(participants):
+        return "past"  # Все получили оценки - категория завершена
+    
+    # Извлекаем номер ковра из названия категории
+    carpet_number = extract_carpet_number(category_name)
+    
+    if carpet_number:
+        # Ищем предыдущие категории на этом же ковре
+        previous_categories = [cat for cat in all_categories 
+                              if extract_carpet_number(cat.get("name", "")) == carpet_number 
+                              and cat.get("name", "") != category_name]
+        
+        # Проверяем завершена ли предыдущая категория
+        previous_completed = True
+        for prev_cat in previous_categories:
+            prev_participants = prev_cat.get("participants", [])
+            prev_with_marks = [p for p in prev_participants 
+                              if p.get("score") 
+                              and p.get("score").strip() != "" 
+                              and p.get("score").strip() != "-"]
+            if len(prev_with_marks) < len(prev_participants):
+                previous_completed = False
+                break
+        
+        if not previous_completed:
+            return "future"  # Предыдущая категория еще не завершена
+        
+        # Если предыдущая категория завершена, эта идет
+        return "current"
+    
+    # Если не удалось определить номер ковра, используем старую логику
+    if participants_with_mark:
+        return "current"  # Есть оценки - категория идет
+    else:
+        return "future"   # Нет оценок - категория скоро
+
+
+def extract_carpet_number(category_name):
+    """Извлекает номер ковра из названия категории"""
+    import re
+    # Ищем паттерны типа "Ковер 1", "Ковер 2", "К1", "К2" и т.д.
+    patterns = [
+        r'Ковер\s*(\d+)',
+        r'К(\d+)',
+        r'Carpet\s*(\d+)',
+        r'C(\d+)'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, category_name, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+    
+    return None
 
 
 def split_category_name(raw_name):
@@ -243,6 +327,36 @@ def parse_competition_results(start_id, end_id):
  
  
 def sync_all_data(request):
+    """Синхронизирует все данные: список соревнований и детальную информацию"""
+    print("=== Начало синхронизации данных ===")
+    
+    # 1. Получаем и сохраняем список соревнований
+    print("1. Парсинг списка соревнований...")
     competitions = parse_competitions()
     write_competitions(competitions)
+    print(f"Список соревнований обновлен: {len(competitions)} соревнований")
+    
+    # 2. Скачиваем детальную информацию о каждом соревновании
+    print("2. Скачивание детальной информации о соревнованиях...")
+    from ..models import Competition
+    
+    all_db_competitions = Competition.objects.all()
+    details_count = 0
+    
+    for comp in all_db_competitions:
+        if comp.link:
+            print(f"  - Скачивание детальной информации: {comp.name}")
+            detail_data = parse_competition_detail(comp.link)
+            if detail_data:
+                # Здесь можно сохранить детальную информацию в БД
+                # Например, в отдельной модели или как JSON поле
+                details_count += 1
+                print(f"    ✓ Детальная информация получена")
+            else:
+                print(f"    ✗ Не удалось получить детальную информацию")
+        else:
+            print(f"  - Пропуск (нет ссылки): {comp.name}")
+    
+    print(f"Детальная информация скачана для {details_count} соревнований")
+    print("=== Синхронизация завершена ===")
     print("Competitions written")

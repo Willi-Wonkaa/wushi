@@ -156,9 +156,20 @@
                                 
                                 {% for category in detail_data.categories %}
                                     <div class="card mb-3">
-                                        <div class="card-header">
-                                            <h6 class="mb-0">{{ category.name }}</h6>
-                                            <small class="text-muted">{{ category.time_range }}</small>
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0">{{ category.name }}</h6>
+                                                <small class="text-muted">{{ category.time_range }}</small>
+                                            </div>
+                                            <div>
+                                                {% if category.status == 'current' %}
+                                                    <span class="badge bg-success">идет</span>
+                                                {% elif category.status == 'past' %}
+                                                    <span class="badge bg-secondary">закончилась</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">еще не началась</span>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                         <div class="card-body">
                                             {% if category.participants %}
