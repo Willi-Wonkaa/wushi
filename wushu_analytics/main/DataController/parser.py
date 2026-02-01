@@ -554,6 +554,15 @@ def full_sync_all_data():
                         except:
                             mark = None
                     
+                    # Парсим место
+                    place_value = None
+                    place_str = participant.get('place', '')
+                    if place_str and place_str.strip():
+                        try:
+                            place_value = int(place_str.strip())
+                        except:
+                            place_value = None
+                    
                     # Создаем или обновляем выступление
                     try:
                         perf_obj, created = Performance.objects.update_or_create(
@@ -565,7 +574,8 @@ def full_sync_all_data():
                                 'carpet': parsed['carpet'],
                                 'origin_title': category_name,
                                 'est_start_datetime': est_start,
-                                'mark': mark
+                                'mark': mark,
+                                'place': place_value
                             }
                         )
                         if created:
@@ -582,6 +592,76 @@ def full_sync_all_data():
         
         # Небольшая задержка между соревнованиями
         time.sleep(SLEEP_TIME)
+    
+    # Обновляем сводную статистику после синхронизации
+    print("\n--- Обновление сводной статистики ---")
+    try:
+        from main.models import RegionStatistics, AthleteStatistics
+        from django.db.models import Count, Avg
+        
+        # Обновляем статистику регионов
+        regions = Participant.objects.values_list('sity', flat=True).distinct()
+        for region in regions:
+            if not region:
+                continue
+            
+            region_performances = Performance.objects.filter(
+                participant__sity=region,
+                mark__isnull=False
+            ).exclude(mark=0)
+            
+            participants_count = Participant.objects.filter(sity=region).count()
+            competitions_count = region_performances.values('competition').distinct().count()
+            performances_count = region_performances.count()
+            gold_count = region_performances.filter(place=1).count()
+            silver_count = region_performances.filter(place=2).count()
+            bronze_count = region_performances.filter(place=3).count()
+            avg_score = region_performances.aggregate(avg=Avg('mark'))['avg'] or 0
+            
+            RegionStatistics.objects.update_or_create(
+                region=region,
+                defaults={
+                    'participants_count': participants_count,
+                    'competitions_count': competitions_count,
+                    'performances_count': performances_count,
+                    'gold_count': gold_count,
+                    'silver_count': silver_count,
+                    'bronze_count': bronze_count,
+                    'avg_score': round(avg_score, 2) if avg_score else 0,
+                }
+            )
+        
+        # Обновляем статистику спортсменов
+        participants = Participant.objects.all()
+        for participant in participants:
+            performances = Performance.objects.filter(
+                participant=participant,
+                mark__isnull=False
+            ).exclude(mark=0)
+            
+            competitions_count = performances.values('competition').distinct().count()
+            performances_count = performances.count()
+            gold_count = performances.filter(place=1).count()
+            silver_count = performances.filter(place=2).count()
+            bronze_count = performances.filter(place=3).count()
+            avg_score = performances.aggregate(avg=Avg('mark'))['avg'] or 0
+            
+            AthleteStatistics.objects.update_or_create(
+                participant=participant,
+                defaults={
+                    'competitions_count': competitions_count,
+                    'performances_count': performances_count,
+                    'gold_count': gold_count,
+                    'silver_count': silver_count,
+                    'bronze_count': bronze_count,
+                    'avg_score': round(avg_score, 2) if avg_score else 0,
+                }
+            )
+        
+        print("✓ Статистика обновлена")
+        
+    except Exception as e:
+        print(f"✗ Ошибка обновления статистики: {e}")
     
     print("\n" + "=" * 60)
     print("=== СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА ===")

@@ -104,14 +104,14 @@
                         </thead>
                         <tbody>
                             {% for participant in participants %}
-                            <tr class="athlete-row" data-name="{{ participant.name|lower }}" data-region="{{ participant.sity|lower }}">
+                            <tr class="athlete-row" data-name="{{ participant.participant.name|lower }}" data-region="{{ participant.participant.sity|lower }}">
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="fw-bold">{{ participant.name }}</div>
+                                        <div class="fw-bold">{{ participant.participant.name }}</div>
                                     </div>
                                 </td>
                                 <td>
-                                    <i class="bi bi-geo-alt text-muted"></i> {{ participant.sity }}
+                                    <i class="bi bi-geo-alt text-muted"></i> {{ participant.participant.sity }}
                                 </td>
                                 <td>
                                     <div class="d-flex gap-2">
@@ -124,7 +124,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <a href="{% url 'athlete_detail' participant.id %}" class="btn btn-sm btn-primary">
+                                    <a href="{% url 'athlete_detail' participant.participant.id %}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-bar-chart"></i> Статистика
                                     </a>
                                 </td>

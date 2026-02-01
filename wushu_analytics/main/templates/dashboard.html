@@ -28,7 +28,7 @@
         <div class="stat-icon">
             <i class="bi bi-trophy"></i>
         </div>
-        <div class="stat-value">12</div>
+        <div class="stat-value">{{ current_competitions_count }}</div>
         <div class="stat-label">Активные соревнования</div>
     </div>
 
@@ -36,7 +36,7 @@
         <div class="stat-icon">
             <i class="bi bi-people"></i>
         </div>
-        <div class="stat-value">486</div>
+        <div class="stat-value">{{ total_athletes }}</div>
         <div class="stat-label">Участники</div>
     </div>
 
@@ -44,7 +44,7 @@
         <div class="stat-icon">
             <i class="bi bi-geo-alt"></i>
         </div>
-        <div class="stat-value">24</div>
+        <div class="stat-value">{{ total_regions }}</div>
         <div class="stat-label">Регионы</div>
     </div>
 
@@ -52,8 +52,24 @@
         <div class="stat-icon">
             <i class="bi bi-check-circle"></i>
         </div>
-        <div class="stat-value">8</div>
+        <div class="stat-value">{{ past_competitions }}</div>
         <div class="stat-label">Завершено</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-calendar"></i>
+        </div>
+        <div class="stat-value">{{ upcoming_competitions }}</div>
+        <div class="stat-label">Предстоящие</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-star"></i>
+        </div>
+        <div class="stat-value">{{ total_medals }}</div>
+        <div class="stat-label">Медали всего</div>
     </div>
 </div>
 

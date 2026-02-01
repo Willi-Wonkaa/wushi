@@ -6,62 +6,81 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Back button -->
-    <div class="mb-4">
+    <!-- Back button and controls -->
+    <div class="mb-4 d-flex justify-content-between align-items-center">
         <a href="{% url 'athletes' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> К списку спортсменов
         </a>
+        
+        <div class="btn-group" role="group">
+            {% if not show_all %}
+            <a href="?show_all=true" class="btn btn-outline-info">
+                <i class="bi bi-eye"></i> Показать все выступления
+            </a>
+            {% else %}
+            <a href="?show_all=false" class="btn btn-outline-secondary">
+                <i class="bi bi-eye-slash"></i> Скрыть нулевые выступления
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Athlete Header Card -->
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ competitions_count }}</h3>
+                    <p class="card-text">Соревнования</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ performances_count }}</h3>
+                    <p class="card-text">Выступления</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ avg_score }}</h3>
+                    <p class="card-text">Средний балл</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ gold_count + silver_count + bronze_count }}</h3>
+                    <p class="card-text">Медали</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medals Breakdown -->
     <div class="card mb-4">
         <div class="card-body">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h2 class="mb-2">{{ participant.name }}</h2>
-                    <p class="text-muted mb-0">
-                        <i class="bi bi-geo-alt"></i> {{ participant.sity }}
-                    </p>
-                    {% if current_age_category %}
-                    <p class="text-muted mb-0">
-                        <i class="bi bi-person"></i> Текущая категория: {{ current_age_category }}
-                    </p>
-                    {% endif %}
-                </div>
-                <div class="col-md-6">
-                    <div class="row text-center">
-                        <div class="col-3">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini">{{ competitions_count }}</div>
-                                <div class="stat-label-mini">Соревнований</div>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #17a2b8;">{{ performances_count }}</div>
-                                <div class="stat-label-mini">Выступлений</div>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #ffd700;">{{ gold_count }}</div>
-                                <div class="stat-label-mini">🥇 Золото</div>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #c0c0c0;">{{ silver_count }}</div>
-                                <div class="stat-label-mini">🥈 Серебро</div>
-                            </div>
-                        </div>
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-value-gold">{{ gold_count }}</div>
+                        <div class="stat-label">🥇 Золотые</div>
                     </div>
-                    <div class="row text-center mt-2">
-                        <div class="col-6">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #cd7f32;">{{ bronze_count }}</div>
-                                <div class="stat-label-mini">🥉 Бронза</div>
-                            </div>
-                        </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-value-silver">{{ silver_count }}</div>
+                        <div class="stat-label">🥈 Серебряные</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-value-bronze">{{ bronze_count }}</div>
+                        <div class="stat-label">🥉 Бронзовые</div>
                     </div>
                 </div>
             </div>

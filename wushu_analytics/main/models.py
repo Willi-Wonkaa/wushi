@@ -67,7 +67,8 @@ class Performance(models.Model):
     real_start_datetime = models.DateTimeField(null=True, blank=True)
     real_end_datetime = models.DateTimeField(null=True, blank=True)
     mark = models.FloatField(null=True, blank=True)
-    
+    place = models.IntegerField(null=True, blank=True, help_text="Занятое место (1, 2, 3...)")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -104,3 +105,42 @@ class Coach(models.Model):
         if not teams:  # Если команды не указаны, доступ ко всем
             return True
         return team_name.lower() in [t.lower() for t in teams]
+
+
+class RegionStatistics(models.Model):
+    """Сводная статистика по регионам для быстрой загрузки"""
+    region = models.CharField(max_length=100, unique=True)
+    participants_count = models.IntegerField(default=0)
+    competitions_count = models.IntegerField(default=0)
+    performances_count = models.IntegerField(default=0)
+    gold_count = models.IntegerField(default=0)
+    silver_count = models.IntegerField(default=0)
+    bronze_count = models.IntegerField(default=0)
+    avg_score = models.FloatField(default=0.0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Статистика региона"
+        verbose_name_plural = "Статистика регионов"
+    
+    def __str__(self):
+        return f"{self.region} - {self.gold_count} {self.silver_count} {self.bronze_count}"
+
+
+class AthleteStatistics(models.Model):
+    """Сводная статистика по спортсменам для быстрой загрузки"""
+    participant = models.OneToOneField(Participant, on_delete=models.CASCADE, related_name='statistics')
+    competitions_count = models.IntegerField(default=0)
+    performances_count = models.IntegerField(default=0)
+    gold_count = models.IntegerField(default=0)
+    silver_count = models.IntegerField(default=0)
+    bronze_count = models.IntegerField(default=0)
+    avg_score = models.FloatField(default=0.0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Статистика спортсмена"
+        verbose_name_plural = "Статистика спортсменов"
+    
+    def __str__(self):
+        return f"{self.participant.name} - {self.gold_count} {self.silver_count} {self.bronze_count}"

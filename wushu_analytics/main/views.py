@@ -7,6 +7,9 @@ import os
 
 
 def dashboard(request):
+    from .models import Participant, Performance, Competition, RegionStatistics, AthleteStatistics
+    from django.db.models import Count, Avg, Q
+    
     # Получаем все соревнования из БД
     all_competitions = Competition.objects.all().order_by('-start_date')
     
@@ -36,11 +39,40 @@ def dashboard(request):
             'status_class': status_class
         })
     
+    # Получаем общую статистику
+    total_athletes = Participant.objects.count()
+    total_regions = Participant.objects.values('sity').distinct().count()
+    
+    # Статистика соревнований
+    upcoming_competitions = all_competitions.filter(start_date__gt=today).count()
+    past_competitions = all_competitions.filter(end_date__lt=today).count()
+    
+    # Общая статистика выступлений (исключая нули)
+    total_performances = Performance.objects.exclude(mark=0).count()
+    total_gold = Performance.objects.filter(place=1).count()
+    total_silver = Performance.objects.filter(place=2).count()
+    total_bronze = Performance.objects.filter(place=3).count()
+    
+    # Средний балл по всем выступлениям (исключая нули)
+    overall_avg_score = Performance.objects.exclude(mark=0).aggregate(avg=Avg('mark'))['avg'] or 0
+    
     context = {
         'current_competitions': current_competitions,
         'all_competitions': competitions_with_status,
         'has_current': current_competitions.exists(),
-        'has_all': all_competitions.exists()
+        'has_all': all_competitions.exists(),
+        # Новая статистика
+        'total_athletes': total_athletes,
+        'total_regions': total_regions,
+        'current_competitions_count': current_competitions.count(),
+        'upcoming_competitions': upcoming_competitions,
+        'past_competitions': past_competitions,
+        'total_performances': total_performances,
+        'total_gold': total_gold,
+        'total_silver': total_silver,
+        'total_bronze': total_bronze,
+        'total_medals': total_gold + total_silver + total_bronze,
+        'overall_avg_score': round(overall_avg_score, 2) if overall_avg_score else 0,
     }
     
     return render(request, "dashboard.html", context)
@@ -116,10 +148,8 @@ def competitions(request):
 
 def regions(request):
     """Страница списка регионов/команд - только для тренеров и администраторов"""
-    from .models import Participant, Performance, Competition
-    from django.db.models import Count, Avg, Q
+    from .models import RegionStatistics
     from django.http import HttpResponseForbidden
-    from datetime import date, timedelta
     
     # Проверка доступа: только авторизованные тренеры или администраторы
     if not request.user.is_authenticated:
@@ -131,80 +161,26 @@ def regions(request):
     if not is_admin and not is_coach:
         return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
-    # Дата 2 года назад для расчета среднего балла
-    two_years_ago = date.today() - timedelta(days=730)
+    # Получаем статистику регионов из сводной таблицы
+    regions_stats = RegionStatistics.objects.all().order_by('-gold_count', '-silver_count', '-bronze_count')
     
-    # Получаем список уникальных регионов с агрегированной статистикой
+    # Формируем данные для шаблона
     regions_data = []
-    regions_list = Participant.objects.values_list('sity', flat=True).distinct().order_by('sity')
-    
-    for region in regions_list:
-        # Участники региона
-        participants = Participant.objects.filter(sity=region)
-        participants_count = participants.count()
-        
-        # Количество соревнований, в которых участвовал регион
-        competitions_count = Performance.objects.filter(
-            participant__sity=region
-        ).values('competition').distinct().count()
-        
-        # Средний балл за последние 2 года
-        avg_score = Performance.objects.filter(
-            participant__sity=region,
-            competition__start_date__gte=two_years_ago,
-            mark__isnull=False
-        ).aggregate(avg=Avg('mark'))['avg'] or 0
-        
-        # Подсчет медалей (по местам в категориях)
-        gold_count = 0
-        silver_count = 0
-        bronze_count = 0
-        
-        # Получаем все выступления региона
-        region_performances = Performance.objects.filter(
-            participant__sity=region,
-            mark__isnull=False
-        ).select_related('competition', 'ages_category', 'disciplines_category', 'participant')
-        
-        for perf in region_performances:
-            # Определяем место в категории
-            better_count = Performance.objects.filter(
-                competition=perf.competition,
-                ages_category=perf.ages_category,
-                disciplines_category=perf.disciplines_category,
-                mark__gt=perf.mark
-            ).count()
-            
-            place = better_count + 1
-            if place == 1:
-                gold_count += 1
-            elif place == 2:
-                silver_count += 1
-            elif place == 3:
-                bronze_count += 1
-        
+    for stat in regions_stats:
         regions_data.append({
-            'name': region,
-            'participants_count': participants_count,
-            'competitions_count': competitions_count,
-            'avg_score': round(avg_score, 2) if avg_score else 0,
-            'gold_count': gold_count,
-            'silver_count': silver_count,
-            'bronze_count': bronze_count,
-            'total_medals': gold_count + silver_count + bronze_count,
+            'region': stat.region,
+            'participants_count': stat.participants_count,
+            'competitions_count': stat.competitions_count,
+            'avg_score': stat.avg_score,
+            'gold_count': stat.gold_count,
+            'silver_count': stat.silver_count,
+            'bronze_count': stat.bronze_count,
+            'total_medals': stat.gold_count + stat.silver_count + stat.bronze_count,
+            'last_updated': stat.last_updated,
         })
-    
-    # Сортируем по количеству участников
-    regions_data.sort(key=lambda x: x['participants_count'], reverse=True)
-    
-    # Общая статистика
-    total_regions = len(regions_data)
-    total_participants = Participant.objects.count()
     
     context = {
         'regions': regions_data,
-        'total_regions': total_regions,
-        'total_participants': total_participants,
     }
     
     return render(request, "regions.html", context)
@@ -247,22 +223,10 @@ def region_detail(request, region_name):
             mark__isnull=False
         ).aggregate(avg=Avg('mark'))['avg'] or 0
         
-        # Медали
-        gold = silver = bronze = 0
-        for perf in performances.filter(mark__isnull=False):
-            better_count = Performance.objects.filter(
-                competition=perf.competition,
-                ages_category=perf.ages_category,
-                disciplines_category=perf.disciplines_category,
-                mark__gt=perf.mark
-            ).count()
-            place = better_count + 1
-            if place == 1:
-                gold += 1
-            elif place == 2:
-                silver += 1
-            elif place == 3:
-                bronze += 1
+        # Медали (по полю place)
+        gold = performances.filter(place=1).count()
+        silver = performances.filter(place=2).count()
+        bronze = performances.filter(place=3).count()
         
         participants_data.append({
             'participant': participant,
@@ -296,22 +260,10 @@ def region_detail(request, region_name):
         # Средний балл команды на соревновании
         team_avg = team_performances.filter(mark__isnull=False).aggregate(avg=Avg('mark'))['avg'] or 0
         
-        # Медали команды на соревновании
-        gold = silver = bronze = 0
-        for perf in team_performances.filter(mark__isnull=False):
-            better_count = Performance.objects.filter(
-                competition=competition,
-                ages_category=perf.ages_category,
-                disciplines_category=perf.disciplines_category,
-                mark__gt=perf.mark
-            ).count()
-            place = better_count + 1
-            if place == 1:
-                gold += 1
-            elif place == 2:
-                silver += 1
-            elif place == 3:
-                bronze += 1
+        # Медали команды на соревновании (по полю place)
+        gold = team_performances.filter(place=1).count()
+        silver = team_performances.filter(place=2).count()
+        bronze = team_performances.filter(place=3).count()
         
         # Общее количество участников в соревновании
         total_participants_in_comp = Performance.objects.filter(
@@ -359,8 +311,7 @@ def region_detail(request, region_name):
 
 def athletes(request):
     """Страница списка спортсменов - только для тренеров и администраторов"""
-    from .models import Participant, Performance, Competition
-    from django.db.models import Count, Q, Max
+    from .models import Participant, AthleteStatistics
     from django.http import HttpResponseForbidden
     
     # Проверка доступа: только авторизованные тренеры или администраторы
@@ -373,16 +324,43 @@ def athletes(request):
     if not is_admin and not is_coach:
         return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
-    # Получаем всех спортсменов с агрегированной информацией
-    participants = Participant.objects.annotate(
-        competitions_count=Count('performance__competition', distinct=True),
-        performances_count=Count('performance'),
-        gold_count=Count('performance', filter=Q(performance__mark__isnull=False) & Q(performance__mark__gte=9.0)),
-        silver_count=Count('performance', filter=Q(performance__mark__isnull=False) & Q(performance__mark__gte=8.5) & Q(performance__mark__lt=9.0)),
-        bronze_count=Count('performance', filter=Q(performance__mark__isnull=False) & Q(performance__mark__gte=8.0) & Q(performance__mark__lt=8.5)),
-    ).order_by('name')
+    # Получаем всех спортсменов со статистикой
+    participants_with_stats = []
+    participants = Participant.objects.all().order_by('name')
     
-    # Получаем статистику
+    for participant in participants:
+        # Получаем статистику из сводной таблицы
+        try:
+            stats = participant.statistics
+            participants_with_stats.append({
+                'participant': participant,
+                'competitions_count': stats.competitions_count,
+                'performances_count': stats.performances_count,
+                'gold_count': stats.gold_count,
+                'silver_count': stats.silver_count,
+                'bronze_count': stats.bronze_count,
+                'avg_score': stats.avg_score,
+                'total_medals': stats.gold_count + stats.silver_count + stats.bronze_count,
+                'last_updated': stats.last_updated,
+            })
+        except AthleteStatistics.DoesNotExist:
+            # Если статистики нет, добавляем пустые значения
+            participants_with_stats.append({
+                'participant': participant,
+                'competitions_count': 0,
+                'performances_count': 0,
+                'gold_count': 0,
+                'silver_count': 0,
+                'bronze_count': 0,
+                'avg_score': 0,
+                'total_medals': 0,
+                'last_updated': None,
+            })
+    
+    # Сортируем по количеству медалей
+    participants_with_stats.sort(key=lambda x: (x['total_medals'], x['gold_count'], x['silver_count']), reverse=True)
+    
+    # Получаем общую статистику
     total_athletes = Participant.objects.count()
     regions = list(Participant.objects.values_list('sity', flat=True).distinct().order_by('sity'))
     total_regions = len(regions)
@@ -394,7 +372,7 @@ def athletes(request):
     razryadniki_count = 0  # Разрядники
     
     context = {
-        'participants': participants,
+        'participants': participants_with_stats,
         'total_athletes': total_athletes,
         'total_regions': total_regions,
         'regions': regions,
@@ -409,7 +387,7 @@ def athletes(request):
 
 def athlete_detail(request, athlete_id):
     """Детальная страница спортсмена - только для тренеров и администраторов"""
-    from .models import Participant, Performance, Competition, AgeCategory
+    from .models import Participant, Performance, Competition, AgeCategory, AthleteStatistics
     from django.db.models import Count, Avg, Max, Min
     from django.shortcuts import get_object_or_404
     from django.http import HttpResponseForbidden
@@ -427,10 +405,19 @@ def athlete_detail(request, athlete_id):
     
     participant = get_object_or_404(Participant, id=athlete_id)
     
-    # Получаем все выступления спортсмена
-    performances = Performance.objects.filter(participant=participant).select_related(
-        'competition', 'ages_category', 'disciplines_category'
-    ).order_by('-competition__start_date', 'est_start_datetime')
+    # Получаем параметр показа всех выступлений (включая нулевые)
+    show_all = request.GET.get('show_all', 'false').lower() == 'true'
+    
+    # Фильтруем выступления в зависимости от настройки
+    if show_all:
+        performances = Performance.objects.filter(participant=participant).select_related(
+            'competition', 'ages_category', 'disciplines_category'
+        ).order_by('-competition__start_date', 'est_start_datetime')
+    else:
+        # По умолчанию скрываем нулевые выступления
+        performances = Performance.objects.filter(participant=participant).exclude(mark=0).select_related(
+            'competition', 'ages_category', 'disciplines_category'
+        ).order_by('-competition__start_date', 'est_start_datetime')
     
     # Количество соревнований
     competitions_count = performances.values('competition').distinct().count()
@@ -439,10 +426,19 @@ def athlete_detail(request, athlete_id):
     latest_performance = performances.first()
     current_age_category = latest_performance.ages_category if latest_performance else None
     
-    # Подсчет медалей (на основе места в категории)
-    gold_count = 0
-    silver_count = 0
-    bronze_count = 0
+    # Получаем статистику из сводной таблицы (исключая нули)
+    try:
+        stats = participant.statistics
+        gold_count = stats.gold_count
+        silver_count = stats.silver_count
+        bronze_count = stats.bronze_count
+        avg_score = stats.avg_score
+    except AthleteStatistics.DoesNotExist:
+        # Если статистики нет, считаем напрямую
+        gold_count = performances.filter(place=1).count()
+        silver_count = performances.filter(place=2).count()
+        bronze_count = performances.filter(place=3).count()
+        avg_score = performances.filter(mark__isnull=False).exclude(mark=0).aggregate(avg=Avg('mark'))['avg'] or 0
     
     # Группируем выступления по соревнованиям
     competitions_data = []
@@ -471,36 +467,15 @@ def athlete_detail(request, athlete_id):
         # Получаем информацию о каждом выступлении с результатами категории
         performances_with_category = []
         for perf in comp_data['performances']:
-            # Получаем всех участников в той же категории с учетом пола
-            # Дополнительная проверка, чтобы в категории были только участники одного пола
+            # Получаем всех участников в той же категории
             category_performances = Performance.objects.filter(
                 competition=competition,
                 ages_category=perf.ages_category,
                 disciplines_category=perf.disciplines_category
-            ).select_related('participant', 'ages_category').order_by('-mark')
+            ).select_related('participant', 'ages_category').order_by('place', '-mark')
             
-            # Фильтруем по полу, если возрастная категория имеет пол
-            if perf.ages_category and perf.ages_category.sex:
-                # Дополнительная проверка - убеждаемся что все участники в категории имеют тот же пол
-                category_performances = category_performances.filter(
-                    ages_category__sex=perf.ages_category.sex
-                )
-                print(f"Category: {perf.origin_title}, Sex: {perf.ages_category.sex}, Participants: {category_performances.count()}")
-            
-            # Определяем место спортсмена
-            place = 1
-            for idx, cat_perf in enumerate(category_performances, 1):
-                if cat_perf.participant.id == participant.id:
-                    place = idx
-                    break
-            
-            # Подсчитываем медали
-            if place == 1 and perf.mark:
-                gold_count += 1
-            elif place == 2 and perf.mark:
-                silver_count += 1
-            elif place == 3 and perf.mark:
-                bronze_count += 1
+            # Используем место из БД
+            place = perf.place if perf.place else None
             
             performances_with_category.append({
                 'performance': perf,
@@ -547,8 +522,10 @@ def athlete_detail(request, athlete_id):
         'gold_count': gold_count,
         'silver_count': silver_count,
         'bronze_count': bronze_count,
+        'avg_score': round(avg_score, 2) if avg_score else 0,
         'competitions_data': competitions_data,
         'score_timeline': json.dumps(score_timeline),
+        'show_all': show_all,
     }
     
     return render(request, "athlete_detail.html", context)
@@ -566,120 +543,115 @@ def update_data(request):
 
 
 def check_categories(request):
-    """Выгружает все таблицы в CSV файлы"""
-    import csv
-    import io
-    from django.http import HttpResponse
-    from .models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
+    """Обновляет статистику регионов и спортсменов"""
+    from .models import Competition, Performance, Participant, RegionStatistics, AthleteStatistics
+    from django.db.models import Count, Avg, Q
+    from django.http import JsonResponse
+    from django.utils import timezone
     
-    print("=== ВЫГРУЗКА ТАБЛИЦ В CSV ===")
+    print("=== ОБНОВЛЕНИЕ СТАТИСТИКИ РЕГИОНОВ И СПОРТСМЕНОВ ===")
     
-    # Создаем ZIP архив со всеми CSV файлами
-    import zipfile
-    zip_buffer = io.BytesIO()
-    
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    try:
+        # Обновляем статистику регионов
+        print("\n1. Обновление статистики регионов...")
+        regions = Participant.objects.values_list('sity', flat=True).distinct().order_by('sity')
+        updated_regions = 0
         
-        # 1. Выгрузка соревнований
-        competitions = Competition.objects.all()
-        print(f"Выгрузка соревнований: {competitions.count()} записей")
+        for region in regions:
+            if not region:
+                continue
+            
+            # Получаем выступления региона (исключая нулевые баллы)
+            region_performances = Performance.objects.filter(
+                participant__sity=region,
+                mark__isnull=False
+            ).exclude(mark=0)
+            
+            # Подсчет статистики
+            participants_count = Participant.objects.filter(sity=region).count()
+            competitions_count = region_performances.values('competition').distinct().count()
+            performances_count = region_performances.count()
+            
+            # Медали по полю place
+            gold_count = region_performances.filter(place=1).count()
+            silver_count = region_performances.filter(place=2).count()
+            bronze_count = region_performances.filter(place=3).count()
+            
+            # Средний балл (исключая нули)
+            avg_score = region_performances.aggregate(avg=Avg('mark'))['avg'] or 0
+            
+            # Обновляем или создаем запись
+            stats, created = RegionStatistics.objects.update_or_create(
+                region=region,
+                defaults={
+                    'participants_count': participants_count,
+                    'competitions_count': competitions_count,
+                    'performances_count': performances_count,
+                    'gold_count': gold_count,
+                    'silver_count': silver_count,
+                    'bronze_count': bronze_count,
+                    'avg_score': round(avg_score, 2) if avg_score else 0,
+                }
+            )
+            
+            if created or stats.last_updated < timezone.now() - timezone.timedelta(minutes=1):
+                updated_regions += 1
+                print(f"  ✓ {region}: {participants_count} уч., {gold_count}🥇 {silver_count}🥈 {bronze_count}🥉")
         
-        comp_buffer = io.StringIO()
-        comp_writer = csv.writer(comp_buffer)
-        comp_writer.writerow(['id', 'name', 'sity', 'start_date', 'end_date', 'link'])
-        for comp in competitions:
-            comp_writer.writerow([comp.id, comp.name, comp.sity, comp.start_date, comp.end_date, comp.link])
-        
-        zip_file.writestr('competitions.csv', comp_buffer.getvalue())
-        comp_buffer.close()
-        
-        # 2. Выгрузка участников
+        # Обновляем статистику спортсменов
+        print(f"\n2. Обновление статистики спортсменов...")
         participants = Participant.objects.all()
-        print(f"Выгрузка участников: {participants.count()} записей")
+        updated_athletes = 0
         
-        part_buffer = io.StringIO()
-        part_writer = csv.writer(part_buffer)
-        part_writer.writerow(['id', 'name', 'sity'])
-        for part in participants:
-            part_writer.writerow([part.id, part.name, part.sity])
+        for participant in participants:
+            # Выступления спортсмена (исключая нулевые баллы)
+            performances = Performance.objects.filter(
+                participant=participant,
+                mark__isnull=False
+            ).exclude(mark=0)
+            
+            # Подсчет статистики
+            competitions_count = performances.values('competition').distinct().count()
+            performances_count = performances.count()
+            
+            # Медали по полю place
+            gold_count = performances.filter(place=1).count()
+            silver_count = performances.filter(place=2).count()
+            bronze_count = performances.filter(place=3).count()
+            
+            # Средний балл (исключая нули)
+            avg_score = performances.aggregate(avg=Avg('mark'))['avg'] or 0
+            
+            # Обновляем или создаем запись
+            stats, created = AthleteStatistics.objects.update_or_create(
+                participant=participant,
+                defaults={
+                    'competitions_count': competitions_count,
+                    'performances_count': performances_count,
+                    'gold_count': gold_count,
+                    'silver_count': silver_count,
+                    'bronze_count': bronze_count,
+                    'avg_score': round(avg_score, 2) if avg_score else 0,
+                }
+            )
+            
+            if created or stats.last_updated < timezone.now() - timezone.timedelta(minutes=1):
+                updated_athletes += 1
+                if gold_count > 0 or silver_count > 0 or bronze_count > 0:
+                    print(f"  ✓ {participant.name}: {gold_count}🥇 {silver_count}🥈 {bronze_count}🥉")
         
-        zip_file.writestr('participants.csv', part_buffer.getvalue())
-        part_buffer.close()
+        print(f"\n=== ОБНОВЛЕНИЕ ЗАВЕРШЕНО ===")
+        print(f"Обновлено регионов: {updated_regions}")
+        print(f"Обновлено спортсменов: {updated_athletes}")
         
-        # 3. Выгрузка дисциплин
-        disciplines = DisciplineCategory.objects.all()
-        print(f"Выгрузка дисциплин: {disciplines.count()} записей")
+        return JsonResponse({
+            'success': True, 
+            'message': f'Статистика обновлена. Регионов: {updated_regions}, спортсменов: {updated_athletes}'
+        })
         
-        disc_buffer = io.StringIO()
-        disc_writer = csv.writer(disc_buffer)
-        disc_writer.writerow(['id', 'name'])
-        for disc in disciplines:
-            disc_writer.writerow([disc.id, disc.name])
-        
-        zip_file.writestr('disciplines.csv', disc_buffer.getvalue())
-        disc_buffer.close()
-        
-        # 4. Выгрузка возрастных категорий
-        age_categories = AgeCategory.objects.all()
-        print(f"Выгрузка возрастных категорий: {age_categories.count()} записей")
-        
-        age_buffer = io.StringIO()
-        age_writer = csv.writer(age_buffer)
-        age_writer.writerow(['id', 'min_ages', 'max_ages', 'sex'])
-        for age_cat in age_categories:
-            age_writer.writerow([age_cat.id, age_cat.min_ages, age_cat.max_ages, age_cat.sex])
-        
-        zip_file.writestr('age_categories.csv', age_buffer.getvalue())
-        age_buffer.close()
-        
-        # 5. Выгрузка выступлений
-        performances = Performance.objects.select_related(
-            'competition', 'participant', 'ages_category', 'disciplines_category'
-        ).all()
-        print(f"Выгрузка выступлений: {performances.count()} записей")
-        
-        perf_buffer = io.StringIO()
-        perf_writer = csv.writer(perf_buffer)
-        perf_writer.writerow([
-            'id', 'carpet', 'origin_title', 'competition_id', 'competition_name',
-            'participant_id', 'participant_name', 'participant_sity',
-            'ages_category_id', 'ages_category_str',
-            'disciplines_category_id', 'disciplines_category_name',
-            'est_start_datetime', 'real_start_datetime', 'real_end_datetime', 'mark'
-        ])
-        
-        for perf in performances:
-            perf_writer.writerow([
-                perf.id,
-                perf.carpet,
-                perf.origin_title,
-                perf.competition.id,
-                perf.competition.name,
-                perf.participant.id,
-                perf.participant.name,
-                perf.participant.sity,
-                perf.ages_category.id if perf.ages_category else '',
-                str(perf.ages_category) if perf.ages_category else '',
-                perf.disciplines_category.id if perf.disciplines_category else '',
-                perf.disciplines_category.name if perf.disciplines_category else '',
-                perf.est_start_datetime,
-                perf.real_start_datetime,
-                perf.real_end_datetime,
-                perf.mark
-            ])
-        
-        zip_file.writestr('performances.csv', perf_buffer.getvalue())
-        perf_buffer.close()
-    
-    zip_buffer.seek(0)
-    
-    print("=== ВЫГРУЗКА ЗАВЕРШЕНА ===")
-    
-    # Создаем HTTP ответ с ZIP архивом
-    response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
-    response['Content-Disposition'] = 'attachment; filename="wushu_database_export.zip"'
-    
-    return response
+    except Exception as e:
+        print(f"Ошибка при обновлении статистики: {e}")
+        return JsonResponse({'success': False, 'message': str(e)})
 
 
 def full_sync(request):
@@ -780,33 +752,10 @@ def competition_analytics(request, competition_id):
         # Средний балл команды
         team_avg = team_performances.filter(mark__isnull=False).aggregate(avg=Avg('mark'))['avg'] or 0
         
-        # Подсчет медалей
-        gold = 0
-        silver = 0
-        bronze = 0
-        
-        for perf in team_performances.filter(mark__isnull=False):
-            # Получаем всех участников в той же категории
-            category_perfs = performances.filter(
-                ages_category=perf.ages_category,
-                disciplines_category=perf.disciplines_category,
-                mark__isnull=False
-            )
-            
-            if perf.ages_category and perf.ages_category.sex:
-                category_perfs = category_perfs.filter(ages_category__sex=perf.ages_category.sex)
-            
-            # Считаем сколько лучших результатов
-            better_count = category_perfs.filter(mark__gt=perf.mark).count()
-            place = better_count + 1
-            
-            if place == 1:
-                gold += 1
-            elif place == 2:
-                silver += 1
-            elif place == 3:
-                bronze += 1
-        
+        # Подсчет медалей (по полю place)
+        gold = team_performances.filter(place=1).count()
+        silver = team_performances.filter(place=2).count()
+        bronze = team_performances.filter(place=3).count()
         total_medals = gold + silver + bronze
         
         # Соотношение выступлений к медалям

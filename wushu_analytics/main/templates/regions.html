@@ -66,9 +66,9 @@
                         </thead>
                         <tbody>
                             {% for region in regions %}
-                            <tr class="region-row" data-name="{{ region.name|lower }}">
+                            <tr class="region-row" data-name="{{ region.region|lower }}">
                                 <td>
-                                    <div class="fw-bold">{{ region.name }}</div>
+                                    <div class="fw-bold">{{ region.region }}</div>
                                 </td>
                                 <td>
                                     <span class="badge bg-info">{{ region.participants_count }}</span>
@@ -94,7 +94,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{% url 'region_detail' region.name %}" class="btn btn-sm btn-primary">
+                                    <a href="{% url 'region_detail' region.region %}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-bar-chart"></i> Аналитика
                                     </a>
                                 </td>

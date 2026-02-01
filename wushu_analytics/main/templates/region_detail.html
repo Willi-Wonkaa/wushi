@@ -13,55 +13,63 @@
         </a>
     </div>
 
-    <!-- Region Header Card -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row align-items-center">
-                <div class="col-md-4">
-                    <h2 class="mb-2"><i class="bi bi-geo-alt"></i> {{ region_name }}</h2>
-                    <p class="text-muted mb-0">Команда региона</p>
-                </div>
-                <div class="col-md-8">
-                    <div class="row text-center">
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini">{{ participants_count }}</div>
-                                <div class="stat-label-mini">Спортсменов</div>
-                            </div>
-                        </div>
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini">{{ competitions_count }}</div>
-                                <div class="stat-label-mini">Соревнований</div>
-                            </div>
-                        </div>
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #ffd700;">{{ total_gold }}</div>
-                                <div class="stat-label-mini">🥇 Золото</div>
-                            </div>
-                        </div>
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #c0c0c0;">{{ total_silver }}</div>
-                                <div class="stat-label-mini">🥈 Серебро</div>
-                            </div>
-                        </div>
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #cd7f32;">{{ total_bronze }}</div>
-                                <div class="stat-label-mini">🥉 Бронза</div>
-                            </div>
-                        </div>
-                        <div class="col-2">
-                            <div class="stat-mini">
-                                <div class="stat-value-mini" style="color: #0088cc;">{{ overall_avg }}</div>
-                                <div class="stat-label-mini">Ср. балл (2г)</div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ participants_count }}</h3>
+                    <p class="card-text">Спортсмены</p>
                 </div>
             </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ competitions_count }}</h3>
+                    <p class="card-text">Соревнования</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ overall_avg }}</h3>
+                    <p class="card-text">Средний балл</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ total_gold + total_silver + total_bronze }}</h3>
+                    <p class="card-text">Медали</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ total_gold }}</h3>
+                    <p class="card-text">� Золото</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-secondary">{{ total_silver }}</h3>
+                    <p class="card-text">� Серебро</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Region Info Card -->
+    <div class="card mb-4">
+        <div class="card-body text-center">
+            <h2 class="mb-2"><i class="bi bi-geo-alt"></i> {{ region_name }}</h2>
+            <p class="text-muted mb-0">Команда региона</p>
         </div>
     </div>
 
