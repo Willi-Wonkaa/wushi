@@ -509,6 +509,10 @@ def update_data(request):
 
 
 def check_categories(request):
+    pass
+
+
+def check_categories(request):
     """Выгружает все таблицы в CSV файлы"""
     import csv
     import io

@@ -248,6 +248,29 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Get theme-aware colors
+    const isDarkTheme = !document.documentElement.hasAttribute('data-theme') || 
+                        document.documentElement.getAttribute('data-theme') !== 'light';
+    
+    const textColor = isDarkTheme ? 'rgba(255, 255, 254, 0.7)' : 'rgba(28, 28, 30, 0.7)';
+    const gridColor = isDarkTheme ? 'rgba(255, 255, 254, 0.06)' : 'rgba(28, 28, 30, 0.06)';
+    
+    // Vibrant teal gradient for bars
+    const mintGradient = (ctx) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(94, 194, 160, 0.9)');
+        gradient.addColorStop(1, 'rgba(126, 212, 184, 0.65)');
+        return gradient;
+    };
+    
+    // Vibrant coral gradient for accent
+    const coralGradient = (ctx) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(255, 138, 122, 0.9)');
+        gradient.addColorStop(1, 'rgba(255, 181, 168, 0.65)');
+        return gradient;
+    };
+
     // Age Categories Chart
     const ageCategoriesCtx = document.getElementById('ageCategoriesChart').getContext('2d');
     const ageCategoriesLabels = {{ chart_labels|safe }};
@@ -261,9 +284,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Средний балл',
                 data: ageCategoriesData,
-                backgroundColor: 'rgba(0, 136, 204, 0.7)',
-                borderColor: 'rgba(0, 136, 204, 1)',
-                borderWidth: 1
+                backgroundColor: mintGradient(ageCategoriesCtx),
+                borderColor: 'rgba(94, 194, 160, 1)',
+                borderWidth: 0,
+                borderRadius: 8,
+                borderSkipped: false
             }]
         },
         options: {
@@ -274,6 +299,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(13, 13, 15, 0.95)',
+                    titleColor: '#FFFFFE',
+                    bodyColor: '#A0A0A8',
+                    borderColor: 'rgba(94, 194, 160, 0.3)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    padding: 12,
                     callbacks: {
                         afterLabel: function(context) {
                             return 'Выступлений: ' + ageCategoriesCounts[context.dataIndex];
@@ -286,10 +318,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true,
                     max: 10,
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
+                        color: gridColor,
+                        drawBorder: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 600 }
                     }
                 },
                 x: {
@@ -297,9 +331,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         display: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: textColor,
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        font: { weight: 600 }
                     }
                 }
             }
@@ -319,18 +354,25 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Медали',
                 data: teamsMedals,
-                backgroundColor: 'rgba(255, 193, 7, 0.7)',
-                borderColor: 'rgba(255, 193, 7, 1)',
-                borderWidth: 1,
+                backgroundColor: coralGradient(teamsCtx),
+                borderColor: 'rgba(255, 138, 122, 1)',
+                borderWidth: 0,
+                borderRadius: 8,
+                borderSkipped: false,
                 yAxisID: 'y'
             }, {
                 label: 'Средний балл',
                 data: teamsScores,
                 type: 'line',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                borderWidth: 2,
-                pointRadius: 4,
+                borderColor: 'rgba(94, 194, 160, 1)',
+                backgroundColor: 'rgba(94, 194, 160, 0.15)',
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: 'rgba(94, 194, 160, 1)',
+                pointBorderColor: isDarkTheme ? '#0D0D0F' : '#FFFFFF',
+                pointBorderWidth: 2,
+                tension: 0.4,
+                fill: true,
                 yAxisID: 'y1'
             }]
         },
@@ -340,8 +382,20 @@ document.addEventListener('DOMContentLoaded', function() {
             plugins: {
                 legend: {
                     labels: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 600 },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(13, 13, 15, 0.95)',
+                    titleColor: '#FFFFFE',
+                    bodyColor: '#A0A0A8',
+                    borderColor: 'rgba(94, 194, 160, 0.3)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    padding: 12
                 }
             },
             scales: {
@@ -351,15 +405,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     position: 'left',
                     beginAtZero: true,
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
+                        color: gridColor,
+                        drawBorder: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 600 }
                     },
                     title: {
                         display: true,
                         text: 'Медали',
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 700 }
                     }
                 },
                 y1: {
@@ -372,12 +429,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         drawOnChartArea: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 600 }
                     },
                     title: {
                         display: true,
                         text: 'Ср. балл',
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: textColor,
+                        font: { weight: 700 }
                     }
                 },
                 x: {
@@ -385,9 +444,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         display: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: textColor,
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        font: { weight: 600 }
                     }
                 }
             }
