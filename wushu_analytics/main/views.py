@@ -414,12 +414,21 @@ def athlete_detail(request, athlete_id):
         # Получаем информацию о каждом выступлении с результатами категории
         performances_with_category = []
         for perf in comp_data['performances']:
-            # Получаем всех участников в той же категории
+            # Получаем всех участников в той же категории с учетом пола
+            # Дополнительная проверка, чтобы в категории были только участники одного пола
             category_performances = Performance.objects.filter(
                 competition=competition,
                 ages_category=perf.ages_category,
                 disciplines_category=perf.disciplines_category
-            ).select_related('participant').order_by('-mark')
+            ).select_related('participant', 'ages_category').order_by('-mark')
+            
+            # Фильтруем по полу, если возрастная категория имеет пол
+            if perf.ages_category and perf.ages_category.sex:
+                # Дополнительная проверка - убеждаемся что все участники в категории имеют тот же пол
+                category_performances = category_performances.filter(
+                    ages_category__sex=perf.ages_category.sex
+                )
+                print(f"Category: {perf.origin_title}, Sex: {perf.ages_category.sex}, Participants: {category_performances.count()}")
             
             # Определяем место спортсмена
             place = 1
@@ -476,6 +485,7 @@ def athlete_detail(request, athlete_id):
     context = {
         'participant': participant,
         'competitions_count': competitions_count,
+        'performances_count': performances.count(),
         'current_age_category': current_age_category,
         'gold_count': gold_count,
         'silver_count': silver_count,
@@ -498,6 +508,123 @@ def update_data(request):
         return JsonResponse({'success': False, 'message': str(e)})
 
 
+def check_categories(request):
+    """Выгружает все таблицы в CSV файлы"""
+    import csv
+    import io
+    from django.http import HttpResponse
+    from .models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
+    
+    print("=== ВЫГРУЗКА ТАБЛИЦ В CSV ===")
+    
+    # Создаем ZIP архив со всеми CSV файлами
+    import zipfile
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        
+        # 1. Выгрузка соревнований
+        competitions = Competition.objects.all()
+        print(f"Выгрузка соревнований: {competitions.count()} записей")
+        
+        comp_buffer = io.StringIO()
+        comp_writer = csv.writer(comp_buffer)
+        comp_writer.writerow(['id', 'name', 'sity', 'start_date', 'end_date', 'link'])
+        for comp in competitions:
+            comp_writer.writerow([comp.id, comp.name, comp.sity, comp.start_date, comp.end_date, comp.link])
+        
+        zip_file.writestr('competitions.csv', comp_buffer.getvalue())
+        comp_buffer.close()
+        
+        # 2. Выгрузка участников
+        participants = Participant.objects.all()
+        print(f"Выгрузка участников: {participants.count()} записей")
+        
+        part_buffer = io.StringIO()
+        part_writer = csv.writer(part_buffer)
+        part_writer.writerow(['id', 'name', 'sity'])
+        for part in participants:
+            part_writer.writerow([part.id, part.name, part.sity])
+        
+        zip_file.writestr('participants.csv', part_buffer.getvalue())
+        part_buffer.close()
+        
+        # 3. Выгрузка дисциплин
+        disciplines = DisciplineCategory.objects.all()
+        print(f"Выгрузка дисциплин: {disciplines.count()} записей")
+        
+        disc_buffer = io.StringIO()
+        disc_writer = csv.writer(disc_buffer)
+        disc_writer.writerow(['id', 'name'])
+        for disc in disciplines:
+            disc_writer.writerow([disc.id, disc.name])
+        
+        zip_file.writestr('disciplines.csv', disc_buffer.getvalue())
+        disc_buffer.close()
+        
+        # 4. Выгрузка возрастных категорий
+        age_categories = AgeCategory.objects.all()
+        print(f"Выгрузка возрастных категорий: {age_categories.count()} записей")
+        
+        age_buffer = io.StringIO()
+        age_writer = csv.writer(age_buffer)
+        age_writer.writerow(['id', 'min_ages', 'max_ages', 'sex'])
+        for age_cat in age_categories:
+            age_writer.writerow([age_cat.id, age_cat.min_ages, age_cat.max_ages, age_cat.sex])
+        
+        zip_file.writestr('age_categories.csv', age_buffer.getvalue())
+        age_buffer.close()
+        
+        # 5. Выгрузка выступлений
+        performances = Performance.objects.select_related(
+            'competition', 'participant', 'ages_category', 'disciplines_category'
+        ).all()
+        print(f"Выгрузка выступлений: {performances.count()} записей")
+        
+        perf_buffer = io.StringIO()
+        perf_writer = csv.writer(perf_buffer)
+        perf_writer.writerow([
+            'id', 'carpet', 'origin_title', 'competition_id', 'competition_name',
+            'participant_id', 'participant_name', 'participant_sity',
+            'ages_category_id', 'ages_category_str',
+            'disciplines_category_id', 'disciplines_category_name',
+            'est_start_datetime', 'real_start_datetime', 'real_end_datetime', 'mark'
+        ])
+        
+        for perf in performances:
+            perf_writer.writerow([
+                perf.id,
+                perf.carpet,
+                perf.origin_title,
+                perf.competition.id,
+                perf.competition.name,
+                perf.participant.id,
+                perf.participant.name,
+                perf.participant.sity,
+                perf.ages_category.id if perf.ages_category else '',
+                str(perf.ages_category) if perf.ages_category else '',
+                perf.disciplines_category.id if perf.disciplines_category else '',
+                perf.disciplines_category.name if perf.disciplines_category else '',
+                perf.est_start_datetime,
+                perf.real_start_datetime,
+                perf.real_end_datetime,
+                perf.mark
+            ])
+        
+        zip_file.writestr('performances.csv', perf_buffer.getvalue())
+        perf_buffer.close()
+    
+    zip_buffer.seek(0)
+    
+    print("=== ВЫГРУЗКА ЗАВЕРШЕНА ===")
+    
+    # Создаем HTTP ответ с ZIP архивом
+    response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+    response['Content-Disposition'] = 'attachment; filename="wushu_database_export.zip"'
+    
+    return response
+
+
 def full_sync(request):
     """Запускает полную синхронизацию всех данных (соревнования + выступления)"""
     from .DataController.parser import full_sync_all_data
@@ -511,3 +638,163 @@ def full_sync(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+
+def competition_analytics(request, competition_id):
+    """Аналитика по конкретному соревнованию"""
+    from .models import Competition, Performance, Participant, AgeCategory
+    from django.db.models import Count, Avg, Q
+    import json
+    
+    try:
+        competition = Competition.objects.get(id=competition_id)
+    except Competition.DoesNotExist:
+        return render(request, "404.html", status=404)
+    
+    # Получаем все выступления на соревновании
+    performances = Performance.objects.filter(competition=competition).select_related(
+        'participant', 'ages_category', 'disciplines_category'
+    )
+    
+    total_performances = performances.count()
+    total_participants = performances.values('participant').distinct().count()
+    
+    # Общий средний балл по соревнованию
+    avg_score = performances.filter(mark__isnull=False).aggregate(avg=Avg('mark'))['avg'] or 0
+    
+    # Распределение баллов по возрастным категориям
+    age_categories_stats = []
+    age_categories = AgeCategory.objects.filter(
+        performance__competition=competition
+    ).distinct()
+    
+    for age_cat in age_categories:
+        cat_performances = performances.filter(ages_category=age_cat, mark__isnull=False)
+        cat_avg = cat_performances.aggregate(avg=Avg('mark'))['avg'] or 0
+        cat_count = cat_performances.count()
+        
+        if cat_count > 0:
+            age_categories_stats.append({
+                'category': str(age_cat),
+                'avg_score': round(cat_avg, 2),
+                'count': cat_count
+            })
+    
+    # Сортируем по среднему баллу
+    age_categories_stats.sort(key=lambda x: x['avg_score'], reverse=True)
+    
+    # Статистика по командам (регионам)
+    teams_data = []
+    teams = performances.values('participant__sity').distinct()
+    
+    for team in teams:
+        team_name = team['participant__sity']
+        if not team_name:
+            continue
+        
+        # Выступления команды
+        team_performances = performances.filter(participant__sity=team_name)
+        team_performances_count = team_performances.count()
+        
+        # Уникальные участники команды
+        team_participants = team_performances.values('participant').distinct().count()
+        
+        # Участники по возрастным категориям
+        participants_by_age = {}
+        for age_cat in age_categories:
+            cat_participants = team_performances.filter(ages_category=age_cat).values('participant').distinct().count()
+            if cat_participants > 0:
+                participants_by_age[str(age_cat)] = cat_participants
+        
+        # Уникальные категории выступлений (дисциплина + возраст)
+        unique_categories = team_performances.values('ages_category', 'disciplines_category').distinct().count()
+        
+        # Средний балл команды
+        team_avg = team_performances.filter(mark__isnull=False).aggregate(avg=Avg('mark'))['avg'] or 0
+        
+        # Подсчет медалей
+        gold = 0
+        silver = 0
+        bronze = 0
+        
+        for perf in team_performances.filter(mark__isnull=False):
+            # Получаем всех участников в той же категории
+            category_perfs = performances.filter(
+                ages_category=perf.ages_category,
+                disciplines_category=perf.disciplines_category,
+                mark__isnull=False
+            )
+            
+            if perf.ages_category and perf.ages_category.sex:
+                category_perfs = category_perfs.filter(ages_category__sex=perf.ages_category.sex)
+            
+            # Считаем сколько лучших результатов
+            better_count = category_perfs.filter(mark__gt=perf.mark).count()
+            place = better_count + 1
+            
+            if place == 1:
+                gold += 1
+            elif place == 2:
+                silver += 1
+            elif place == 3:
+                bronze += 1
+        
+        total_medals = gold + silver + bronze
+        
+        # Соотношение выступлений к медалям
+        if total_medals > 0:
+            ratio = round(team_performances_count / total_medals, 2)
+            efficiency = round((total_medals / team_performances_count) * 100, 1)
+        else:
+            ratio = 0
+            efficiency = 0
+        
+        teams_data.append({
+            'name': team_name,
+            'participants': team_participants,
+            'participants_by_age': participants_by_age,
+            'performances': team_performances_count,
+            'unique_categories': unique_categories,
+            'avg_score': round(team_avg, 2),
+            'gold': gold,
+            'silver': silver,
+            'bronze': bronze,
+            'total_medals': total_medals,
+            'ratio': ratio,
+            'efficiency': efficiency
+        })
+    
+    # Сортируем команды по количеству медалей
+    teams_data.sort(key=lambda x: (x['total_medals'], x['gold'], x['silver']), reverse=True)
+    
+    # Данные для графика распределения баллов по возрастным категориям
+    chart_labels = [cat['category'] for cat in age_categories_stats]
+    chart_data = [cat['avg_score'] for cat in age_categories_stats]
+    chart_counts = [cat['count'] for cat in age_categories_stats]
+    
+    # Данные для графика по командам (топ-10)
+    top_teams = teams_data[:10]
+    teams_chart_labels = [t['name'][:20] for t in top_teams]
+    teams_chart_scores = [t['avg_score'] for t in top_teams]
+    teams_chart_medals = [t['total_medals'] for t in top_teams]
+    
+    # Список всех возрастных категорий для заголовков таблицы
+    all_age_categories = [str(cat) for cat in age_categories]
+    
+    context = {
+        'competition': competition,
+        'total_performances': total_performances,
+        'total_participants': total_participants,
+        'avg_score': round(avg_score, 2),
+        'age_categories_stats': age_categories_stats,
+        'teams_data': teams_data,
+        'all_age_categories': all_age_categories,
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
+        'chart_counts': json.dumps(chart_counts),
+        'teams_chart_labels': json.dumps(teams_chart_labels),
+        'teams_chart_scores': json.dumps(teams_chart_scores),
+        'teams_chart_medals': json.dumps(teams_chart_medals),
+    }
+    
+    return render(request, "competition_analytics.html", context)

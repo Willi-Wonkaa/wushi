@@ -721,6 +721,9 @@
                     <button class="btn btn-warning" id="fullSyncBtn" title="Полностью обновить данные (временная кнопка)">
                         <i class="bi bi-cloud-download" id="fullSyncIcon"></i> Полная синхронизация
                     </button>
+                    <button class="btn btn-info" id="checkCategoriesBtn" title="Проверить категории">
+                        <i class="bi bi-search"></i> Чек
+                    </button>
                     <a href="#" class="btn-primary-custom">
                         <i class="bi bi-plus-circle"></i>
                         Добавить
@@ -850,6 +853,55 @@
         fullSyncBtn.addEventListener('click', function() {
             startFullSync();
         });
+
+        // Check categories button functionality
+        const checkCategoriesBtn = document.getElementById('checkCategoriesBtn');
+        checkCategoriesBtn.addEventListener('click', function() {
+            checkCategories();
+        });
+
+        async function checkCategories() {
+            const originalText = checkCategoriesBtn.innerHTML;
+            
+            // Показываем состояние загрузки
+            checkCategoriesBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Выгрузка...';
+            checkCategoriesBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/check-categories/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                if (response.ok) {
+                    // Создаем blob из ответа и скачиваем файл
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'wushu_database_export.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showNotification('База данных успешно выгружена!', 'success');
+                } else {
+                    showNotification('Ошибка при выгрузке данных', 'error');
+                }
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                showNotification('Ошибка при выгрузке данных', 'error');
+            } finally {
+                // Возвращаем кнопку в исходное состояние
+                checkCategoriesBtn.innerHTML = originalText;
+                checkCategoriesBtn.disabled = false;
+            }
+        }
 
         async function startFullSync() {
             const fullSyncIcon = document.getElementById('fullSyncIcon');

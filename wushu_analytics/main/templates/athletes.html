@@ -98,6 +98,7 @@
                             <tr>
                                 <th>ФИО</th>
                                 <th>Город/Регион</th>
+                                <th>Выступления</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
@@ -111,6 +112,16 @@
                                 </td>
                                 <td>
                                     <i class="bi bi-geo-alt text-muted"></i> {{ participant.sity }}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-trophy"></i> {{ participant.competitions_count }} 
+                                        </span>
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-calendar-check"></i> {{ participant.performances_count }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
                                     <a href="{% url 'athlete_detail' participant.id %}" class="btn btn-sm btn-primary">

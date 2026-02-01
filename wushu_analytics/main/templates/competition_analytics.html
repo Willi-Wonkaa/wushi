@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+
+{% block title %}Аналитика - {{ competition.name }} - Wushu Analytics{% endblock %}
+
+{% block page_title %}Аналитика соревнования{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back button -->
+    <div class="mb-4">
+        <a href="{% url 'competitions' %}?competition_id={{ competition.id }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К соревнованию
+        </a>
+    </div>
+
+    <!-- Competition Header -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h2 class="mb-2"><i class="bi bi-trophy"></i> {{ competition.name }}</h2>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-geo-alt"></i> {{ competition.sity }} | 
+                        <i class="bi bi-calendar"></i> {{ competition.start_date|date:"d.m.Y" }} - {{ competition.end_date|date:"d.m.Y" }}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #17a2b8;">{{ total_participants }}</div>
+                                <div class="stat-label-mini">Участников</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #6f42c1;">{{ total_performances }}</div>
+                                <div class="stat-label-mini">Выступлений</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #28a745;">{{ avg_score }}</div>
+                                <div class="stat-label-mini">Средний балл</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Age Categories Chart -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Средний балл по возрастным категориям</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="ageCategoriesChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Teams Chart -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Топ-10 команд по медалям</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="teamsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Age Categories Stats Table -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-list-ul"></i> Статистика по возрастным категориям</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Выступлений</th>
+                            <th>Средний балл</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in age_categories_stats %}
+                        <tr>
+                            <td><span class="badge bg-info">{{ cat.category }}</span></td>
+                            <td>{{ cat.count }}</td>
+                            <td>
+                                <span class="badge bg-success">{{ cat.avg_score }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">Нет данных</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teams Statistics Table -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-table"></i> Детализация по командам</h6>
+            <div class="input-group" style="width: 300px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="teamSearch" placeholder="Поиск по команде...">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="teamsTable">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">Команда</th>
+                            <th>Участников</th>
+                            <th>Выступлений</th>
+                            <th>Категорий</th>
+                            <th>🥇</th>
+                            <th>🥈</th>
+                            <th>🥉</th>
+                            <th>Всего медалей</th>
+                            <th>Ср. балл</th>
+                            <th>Эффективность</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for team in teams_data %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="team-indicator me-2" style="background-color: {% cycle '#4CAF50' '#2196F3' '#FF9800' '#9C27B0' '#E91E63' '#00BCD4' '#FF5722' '#607D8B' %}"></span>
+                                    <a href="{% url 'region_detail' team.name %}" class="fw-bold text-decoration-none">{{ team.name }}</a>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ team.participants }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ team.performances }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ team.unique_categories }}</span>
+                            </td>
+                            <td>
+                                {% if team.gold > 0 %}
+                                <span class="badge bg-warning text-dark">{{ team.gold }}</span>
+                                {% else %}
+                                <span class="text-muted">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if team.silver > 0 %}
+                                <span class="badge bg-secondary">{{ team.silver }}</span>
+                                {% else %}
+                                <span class="text-muted">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if team.bronze > 0 %}
+                                <span class="badge" style="background-color: #cd7f32;">{{ team.bronze }}</span>
+                                {% else %}
+                                <span class="text-muted">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ team.total_medals }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">{{ team.avg_score }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 8px; width: 80px;">
+                                        <div class="progress-bar {% if team.efficiency >= 50 %}bg-success{% elif team.efficiency >= 25 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                             style="width: {{ team.efficiency }}%"></div>
+                                    </div>
+                                    <span class="small">{{ team.efficiency }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox display-4"></i>
+                                <p class="mt-2">Нет данных о командах</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-dark">
+                        <tr>
+                            <td><strong>ИТОГО</strong></td>
+                            <td><strong>{{ total_participants }}</strong></td>
+                            <td><strong>{{ total_performances }}</strong></td>
+                            <td>-</td>
+                            <td><strong>{% widthratio 0 1 0 %}</strong></td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><strong>{{ avg_score }}</strong></td>
+                            <td>-</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.stat-mini {
+    padding: 0.5rem;
+}
+.stat-value-mini {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+.stat-label-mini {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.team-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.progress {
+    background-color: var(--card-border);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Age Categories Chart
+    const ageCategoriesCtx = document.getElementById('ageCategoriesChart').getContext('2d');
+    const ageCategoriesLabels = {{ chart_labels|safe }};
+    const ageCategoriesData = {{ chart_data|safe }};
+    const ageCategoriesCounts = {{ chart_counts|safe }};
+    
+    new Chart(ageCategoriesCtx, {
+        type: 'bar',
+        data: {
+            labels: ageCategoriesLabels,
+            datasets: [{
+                label: 'Средний балл',
+                data: ageCategoriesData,
+                backgroundColor: 'rgba(0, 136, 204, 0.7)',
+                borderColor: 'rgba(0, 136, 204, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            return 'Выступлений: ' + ageCategoriesCounts[context.dataIndex];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Teams Chart
+    const teamsCtx = document.getElementById('teamsChart').getContext('2d');
+    const teamsLabels = {{ teams_chart_labels|safe }};
+    const teamsMedals = {{ teams_chart_medals|safe }};
+    const teamsScores = {{ teams_chart_scores|safe }};
+    
+    new Chart(teamsCtx, {
+        type: 'bar',
+        data: {
+            labels: teamsLabels,
+            datasets: [{
+                label: 'Медали',
+                data: teamsMedals,
+                backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1,
+                yAxisID: 'y'
+            }, {
+                label: 'Средний балл',
+                data: teamsScores,
+                type: 'line',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderWidth: 2,
+                pointRadius: 4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Медали',
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    max: 10,
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Ср. балл',
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Team Search
+    const teamSearch = document.getElementById('teamSearch');
+    const teamsTable = document.getElementById('teamsTable');
+    
+    teamSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = teamsTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const teamName = row.cells[0].textContent.toLowerCase();
+            row.style.display = teamName.includes(searchTerm) ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}
