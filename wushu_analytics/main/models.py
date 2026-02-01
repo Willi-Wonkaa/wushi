@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Competition(models.Model):
     link = models.CharField(max_length=500, blank=True, null=True)
@@ -77,3 +78,29 @@ class Performance(models.Model):
     
     def __str__(self):
         return f"{self.participant.name} - {self.origin_title}"
+
+class Coach(models.Model):
+    """Модель тренера с доступом к аналитике определённых команд"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='coach_profile')
+    teams = models.TextField(help_text="Названия команд/городов через запятую", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Тренер"
+        verbose_name_plural = "Тренеры"
+    
+    def __str__(self):
+        return f"{self.user.username} - Тренер"
+    
+    def get_teams_list(self):
+        """Возвращает список команд как список строк"""
+        if not self.teams:
+            return []
+        return [team.strip() for team in self.teams.split(',') if team.strip()]
+    
+    def has_team_access(self, team_name):
+        """Проверяет доступ к конкретной команде"""
+        teams = self.get_teams_list()
+        if not teams:  # Если команды не указаны, доступ ко всем
+            return True
+        return team_name.lower() in [t.lower() for t in teams]

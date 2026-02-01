@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+
+{% block title %}Управление пользователями - Wushu Analytics{% endblock %}
+
+{% block page_title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2"></i>Управление пользователями
+                </h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="bi bi-person-plus me-2"></i>Добавить пользователя
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Email</th>
+                                <th>Роль</th>
+                                <th>Статус</th>
+                                <th>Доступные команды</th>
+                                <th>Дата добавления</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_data in users %}
+                            <tr>
+                                <td>
+                                    <strong>{{ user_data.user.username }}</strong>
+                                </td>
+                                <td>{{ user_data.user.email|default:"-" }}</td>
+                                <td>
+                                    {% if user_data.user.is_superuser %}
+                                        <span class="badge-custom badge-warning">Администратор</span>
+                                    {% elif user_data.is_coach %}
+                                        <span class="badge-custom badge-success">Тренер</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-secondary">Пользователь</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_data.user.is_active %}
+                                        <span class="badge-custom badge-success">Активен</span>
+                                    {% else %}
+                                        <span class="badge-custom badge-secondary">Неактивен</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_data.user.is_superuser %}
+                                        <span class="text-muted">Все команды</span>
+                                    {% elif user_data.teams %}
+                                        {{ user_data.teams }}
+                                    {% else %}
+                                        <span class="text-muted">Все команды</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user_data.user.date_joined|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if not user_data.user.is_superuser %}
+                                    <button class="btn btn-sm btn-outline-primary edit-user-btn" 
+                                            data-user-id="{{ user_data.user.id }}"
+                                            data-username="{{ user_data.user.username }}"
+                                            data-email="{{ user_data.user.email }}"
+                                            data-is-coach="{{ user_data.is_coach }}"
+                                            data-teams="{{ user_data.teams_list }}"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editUserModal">
+                                        <i class="bi bi-pencil"></i> Редактировать
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-user-btn"
+                                            data-user-id="{{ user_data.user.id }}"
+                                            data-username="{{ user_data.user.username }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="bi bi-people display-4"></i>
+                                    <p class="mt-2">Пользователи не найдены</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus me-2"></i>Добавить пользователя
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'admin_add_user' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Имя пользователя:</label>
+                        <input type="text" name="username" class="form-control" placeholder="user_login" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email:</label>
+                        <input type="email" name="email" class="form-control" placeholder="user@example.com">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Роль:</label>
+                        <select name="role" class="form-select" id="addRoleSelect">
+                            <option value="coach">Тренер</option>
+                            <option value="user">Пользователь (без доступа к аналитике)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="addTeamsSection">
+                        <label class="form-label">Доступ к командам:</label>
+                        <div class="card">
+                            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="addSelectAllTeams" onchange="toggleAllTeams(this, 'add')">
+                                    <label class="form-check-label fw-bold" for="addSelectAllTeams">
+                                        Выбрать все команды
+                                    </label>
+                                </div>
+                                <hr class="my-2">
+                                {% for team in teams %}
+                                <div class="form-check">
+                                    <input class="form-check-input add-team-checkbox" type="checkbox" name="teams" value="{{ team }}" id="addTeam{{ forloop.counter }}">
+                                    <label class="form-check-label" for="addTeam{{ forloop.counter }}">
+                                        {{ team }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <small class="text-muted">Пользователь будет иметь доступ только к выбранным командам. Если ничего не выбрано - доступ ко всем.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Пароль:</label>
+                        <input type="password" name="password" class="form-control" placeholder="Защищённый пароль" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Подтверждение пароля:</label>
+                        <input type="password" name="password_confirm" class="form-control" placeholder="Повторите пароль" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отменить</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Редактировать пользователя
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'admin_edit_user' %}">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" id="editUserId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Имя пользователя:</label>
+                        <input type="text" name="username" id="editUsername" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email:</label>
+                        <input type="email" name="email" id="editEmail" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Роль:</label>
+                        <select name="role" class="form-select" id="editRoleSelect">
+                            <option value="coach">Тренер</option>
+                            <option value="user">Пользователь (без доступа к аналитике)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="editTeamsSection">
+                        <label class="form-label">Доступ к командам:</label>
+                        <div class="card">
+                            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="editSelectAllTeams" onchange="toggleAllTeams(this, 'edit')">
+                                    <label class="form-check-label fw-bold" for="editSelectAllTeams">
+                                        Выбрать все команды
+                                    </label>
+                                </div>
+                                <hr class="my-2">
+                                {% for team in teams %}
+                                <div class="form-check">
+                                    <input class="form-check-input edit-team-checkbox" type="checkbox" name="teams" value="{{ team }}" id="editTeam{{ forloop.counter }}">
+                                    <label class="form-check-label" for="editTeam{{ forloop.counter }}">
+                                        {{ team }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <small class="text-muted">Пользователь будет иметь доступ только к выбранным командам. Если ничего не выбрано - доступ ко всем.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль (оставьте пустым, чтобы не менять):</label>
+                        <input type="password" name="password" class="form-control" placeholder="Новый пароль">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отменить</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Удаление пользователя
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'admin_delete_user' %}">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" id="deleteUserId">
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить пользователя <strong id="deleteUsername"></strong>?</p>
+                    <p class="text-muted">Это действие нельзя отменить.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отменить</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Удалить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllTeams(checkbox, prefix) {
+    const checkboxes = document.querySelectorAll('.' + prefix + '-team-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+// Edit user modal population
+document.querySelectorAll('.edit-user-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const username = this.dataset.username;
+        const email = this.dataset.email;
+        const isCoach = this.dataset.isCoach === 'True';
+        const teams = this.dataset.teams;
+        
+        document.getElementById('editUserId').value = userId;
+        document.getElementById('editUsername').value = username;
+        document.getElementById('editEmail').value = email;
+        document.getElementById('editRoleSelect').value = isCoach ? 'coach' : 'user';
+        
+        // Reset all checkboxes
+        document.querySelectorAll('.edit-team-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('editSelectAllTeams').checked = false;
+        
+        // Check the teams
+        if (teams) {
+            const teamsList = teams.split(',').map(t => t.trim());
+            document.querySelectorAll('.edit-team-checkbox').forEach(cb => {
+                if (teamsList.includes(cb.value)) {
+                    cb.checked = true;
+                }
+            });
+        }
+        
+        // Toggle teams section based on role
+        toggleTeamsSection('edit');
+    });
+});
+
+// Delete user modal
+document.querySelectorAll('.delete-user-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const username = this.dataset.username;
+        
+        document.getElementById('deleteUserId').value = userId;
+        document.getElementById('deleteUsername').textContent = username;
+        
+        new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+    });
+});
+
+// Toggle teams section based on role
+function toggleTeamsSection(prefix) {
+    const select = document.getElementById(prefix + 'RoleSelect');
+    const section = document.getElementById(prefix + 'TeamsSection');
+    
+    if (select.value === 'coach') {
+        section.style.display = 'block';
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+document.getElementById('addRoleSelect').addEventListener('change', () => toggleTeamsSection('add'));
+document.getElementById('editRoleSelect').addEventListener('change', () => toggleTeamsSection('edit'));
+
+// Initialize
+toggleTeamsSection('add');
+</script>
+
+<style>
+.modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--card-border);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--card-border);
+}
+
+.btn-close {
+    filter: var(--bs-btn-close-white-filter, invert(1));
+}
+
+[data-theme="light"] .btn-close {
+    filter: none;
+}
+</style>
+{% endblock %}

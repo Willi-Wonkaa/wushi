@@ -17,6 +17,12 @@ urlpatterns = [
     path('run-parser/', views.update_data, name='run_parser'),
     path('full-sync/', views.full_sync, name='full_sync'),
     path('check-categories/', views.check_categories, name='check_categories'),
+    
+    # Custom admin panel
+    path('manage/users/', views.admin_users, name='admin_users'),
+    path('manage/users/add/', views.admin_add_user, name='admin_add_user'),
+    path('manage/users/edit/', views.admin_edit_user, name='admin_edit_user'),
+    path('manage/users/delete/', views.admin_delete_user, name='admin_delete_user'),
 
 ]
 

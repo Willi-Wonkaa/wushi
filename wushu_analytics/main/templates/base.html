@@ -1031,36 +1031,51 @@
         </div>
         
         <nav class="sidebar-nav">
+            <!-- Главная - доступна всем -->
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
                     <i class="bi bi-house"></i>
                     <span>Главная</span>
                 </a>
             </div>
+            
+            <!-- Аналитика - только для тренеров и админов -->
+            {% if user.is_authenticated and user.is_superuser or user.coach_profile %}
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}" href="{% url 'analytics' %}">
                     <i class="bi bi-graph-up"></i>
                     <span>Аналитика</span>
                 </a>
             </div>
+            {% endif %}
+            
+            <!-- Соревнования - доступна всем -->
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'competitions' %}active{% endif %}" href="{% url 'competitions' %}">
                     <i class="bi bi-trophy"></i>
                     <span>Соревнования</span>
                 </a>
             </div>
+            
+            <!-- Регионы - только для тренеров и админов -->
+            {% if user.is_authenticated and user.is_superuser or user.coach_profile %}
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'regions' %}active{% endif %}" href="{% url 'regions' %}">
                     <i class="bi bi-geo-alt"></i>
                     <span>Регионы</span>
                 </a>
             </div>
+            {% endif %}
+            
+            <!-- Спортсмены - только для тренеров и админов -->
+            {% if user.is_authenticated and user.is_superuser or user.coach_profile %}
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'athletes' %}active{% endif %}" href="{% url 'athletes' %}">
                     <i class="bi bi-person"></i>
                     <span>Спортсмены</span>
                 </a>
             </div>
+            {% endif %}
         </nav>
     </div>
 
@@ -1092,10 +1107,33 @@
                             <i class="bi bi-person-circle"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Профиль</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Настройки</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-box-arrow-right"></i> Выход</a></li>
+                            {% if user.is_authenticated %}
+                                <li class="dropdown-header">
+                                    <i class="bi bi-person-badge me-1"></i>
+                                    {% if user.is_superuser %}
+                                        <strong>Администратор</strong>
+                                    {% elif user.coach_profile %}
+                                        <strong>Тренер</strong>
+                                    {% else %}
+                                        <strong>Пользователь</strong>
+                                    {% endif %}
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><span class="dropdown-item-text"><i class="bi bi-person"></i> {{ user.username }}</span></li>
+                                {% if user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'admin_users' %}"><i class="bi bi-people"></i> Управление пользователями</a></li>
+                                <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Django Admin</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Выход</a></li>
+                            {% else %}
+                                <li class="dropdown-header">
+                                    <i class="bi bi-person-badge me-1"></i>
+                                    <strong>Гость</strong>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Войти</a></li>
+                            {% endif %}
                         </ul>
                     </div>
                 </div>
@@ -1104,6 +1142,25 @@
 
         <!-- Page Content -->
         <div class="content-wrapper">
+            <!-- Messages -->
+            {% if messages %}
+            <div class="messages-container mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {% if message.tags == 'error' %}
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    {% elif message.tags == 'success' %}
+                    <i class="bi bi-check-circle me-2"></i>
+                    {% else %}
+                    <i class="bi bi-info-circle me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
             {% block content %}
             {% endblock %}
         </div>

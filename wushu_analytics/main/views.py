@@ -46,6 +46,19 @@ def dashboard(request):
     return render(request, "dashboard.html", context)
 
 def analytics(request):
+    """Страница аналитики - только для тренеров и администраторов"""
+    from django.http import HttpResponseForbidden
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
+    
     return render(request, "analytics.html")
 
 def competitions(request):
@@ -102,10 +115,21 @@ def competitions(request):
     return render(request, "competitions.html", context)
 
 def regions(request):
-    """Страница списка регионов/команд"""
+    """Страница списка регионов/команд - только для тренеров и администраторов"""
     from .models import Participant, Performance, Competition
     from django.db.models import Count, Avg, Q
+    from django.http import HttpResponseForbidden
     from datetime import date, timedelta
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
     # Дата 2 года назад для расчета среднего балла
     two_years_ago = date.today() - timedelta(days=730)
@@ -187,12 +211,23 @@ def regions(request):
 
 
 def region_detail(request, region_name):
-    """Детальная страница региона/команды"""
+    """Детальная страница региона/команды - только для тренеров и администраторов"""
     from .models import Participant, Performance, Competition
     from django.db.models import Count, Avg, Q
+    from django.http import HttpResponseForbidden
     from datetime import date, timedelta
     from urllib.parse import unquote
     import json
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
     region_name = unquote(region_name)
     two_years_ago = date.today() - timedelta(days=730)
@@ -323,9 +358,20 @@ def region_detail(request, region_name):
     return render(request, "region_detail.html", context)
 
 def athletes(request):
-    """Страница списка спортсменов"""
+    """Страница списка спортсменов - только для тренеров и администраторов"""
     from .models import Participant, Performance, Competition
     from django.db.models import Count, Q, Max
+    from django.http import HttpResponseForbidden
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
     # Получаем всех спортсменов с агрегированной информацией
     participants = Participant.objects.annotate(
@@ -362,11 +408,22 @@ def athletes(request):
 
 
 def athlete_detail(request, athlete_id):
-    """Детальная страница спортсмена"""
+    """Детальная страница спортсмена - только для тренеров и администраторов"""
     from .models import Participant, Performance, Competition, AgeCategory
     from django.db.models import Count, Avg, Max, Min
     from django.shortcuts import get_object_or_404
+    from django.http import HttpResponseForbidden
     import json
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
     participant = get_object_or_404(Participant, id=athlete_id)
     
@@ -509,10 +566,6 @@ def update_data(request):
 
 
 def check_categories(request):
-    pass
-
-
-def check_categories(request):
     """Выгружает все таблицы в CSV файлы"""
     import csv
     import io
@@ -645,10 +698,21 @@ def full_sync(request):
 
 
 def competition_analytics(request, competition_id):
-    """Аналитика по конкретному соревнованию"""
-    from .models import Competition, Performance, Participant, AgeCategory
+    """Аналитика по конкретному соревнованию - только для тренеров и администраторов"""
+    from .models import Competition, Performance, Participant, AgeCategory, Coach
     from django.db.models import Count, Avg, Q
+    from django.http import HttpResponseForbidden
     import json
+    
+    # Проверка доступа: только авторизованные тренеры или администраторы
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
+    
+    is_admin = request.user.is_superuser
+    is_coach = hasattr(request.user, 'coach_profile')
+    
+    if not is_admin and not is_coach:
+        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
     
     try:
         competition = Competition.objects.get(id=competition_id)
@@ -802,3 +866,169 @@ def competition_analytics(request, competition_id):
     }
     
     return render(request, "competition_analytics.html", context)
+
+
+# ============== Custom Admin Panel ==============
+
+def admin_users(request):
+    """Страница управления пользователями - только для администраторов"""
+    from django.contrib.auth.models import User
+    from .models import Participant, Coach
+    from django.http import HttpResponseForbidden
+    
+    # Проверка доступа: только суперпользователи
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponseForbidden("Доступ запрещён. Только для администраторов.")
+    
+    # Получаем всех пользователей
+    users = User.objects.all().order_by('-date_joined')
+    
+    users_data = []
+    for user in users:
+        is_coach = hasattr(user, 'coach_profile')
+        teams = user.coach_profile.teams if is_coach else ''
+        teams_list = user.coach_profile.get_teams_list() if is_coach else []
+        
+        users_data.append({
+            'user': user,
+            'is_coach': is_coach,
+            'teams': teams,
+            'teams_list': ','.join(teams_list),
+        })
+    
+    # Получаем список всех команд для чекбоксов
+    teams = list(Participant.objects.values_list('sity', flat=True).distinct().order_by('sity'))
+    
+    context = {
+        'users': users_data,
+        'teams': teams,
+    }
+    
+    return render(request, "admin_users.html", context)
+
+
+def admin_add_user(request):
+    """Добавление нового пользователя"""
+    from django.contrib.auth.models import User
+    from .models import Coach
+    from django.http import JsonResponse, HttpResponseForbidden
+    from django.shortcuts import redirect
+    from django.contrib import messages
+    
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponseForbidden("Доступ запрещён.")
+    
+    if request.method != 'POST':
+        return redirect('admin_users')
+    
+    username = request.POST.get('username', '').strip()
+    email = request.POST.get('email', '').strip()
+    password = request.POST.get('password', '')
+    password_confirm = request.POST.get('password_confirm', '')
+    role = request.POST.get('role', 'user')
+    teams = request.POST.getlist('teams')
+    
+    # Валидация
+    if not username:
+        messages.error(request, 'Имя пользователя обязательно')
+        return redirect('admin_users')
+    
+    if password != password_confirm:
+        messages.error(request, 'Пароли не совпадают')
+        return redirect('admin_users')
+    
+    if User.objects.filter(username=username).exists():
+        messages.error(request, 'Пользователь с таким именем уже существует')
+        return redirect('admin_users')
+    
+    # Создаем пользователя
+    user = User.objects.create_user(username=username, email=email, password=password)
+    
+    # Если роль - тренер, создаем профиль тренера
+    if role == 'coach':
+        Coach.objects.create(user=user, teams=', '.join(teams) if teams else '')
+    
+    messages.success(request, f'Пользователь {username} успешно создан')
+    return redirect('admin_users')
+
+
+def admin_edit_user(request):
+    """Редактирование пользователя"""
+    from django.contrib.auth.models import User
+    from .models import Coach
+    from django.http import HttpResponseForbidden
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+    
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponseForbidden("Доступ запрещён.")
+    
+    if request.method != 'POST':
+        return redirect('admin_users')
+    
+    user_id = request.POST.get('user_id')
+    username = request.POST.get('username', '').strip()
+    email = request.POST.get('email', '').strip()
+    password = request.POST.get('password', '')
+    role = request.POST.get('role', 'user')
+    teams = request.POST.getlist('teams')
+    
+    user = get_object_or_404(User, id=user_id)
+    
+    # Не позволяем редактировать суперпользователей
+    if user.is_superuser:
+        messages.error(request, 'Нельзя редактировать администратора')
+        return redirect('admin_users')
+    
+    # Обновляем данные
+    user.username = username
+    user.email = email
+    if password:
+        user.set_password(password)
+    user.save()
+    
+    # Обновляем профиль тренера
+    if role == 'coach':
+        coach, created = Coach.objects.get_or_create(user=user)
+        coach.teams = ', '.join(teams) if teams else ''
+        coach.save()
+    else:
+        # Удаляем профиль тренера, если роль изменена
+        if hasattr(user, 'coach_profile'):
+            user.coach_profile.delete()
+    
+    messages.success(request, f'Пользователь {username} успешно обновлён')
+    return redirect('admin_users')
+
+
+def admin_delete_user(request):
+    """Удаление пользователя"""
+    from django.contrib.auth.models import User
+    from django.http import HttpResponseForbidden
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+    
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponseForbidden("Доступ запрещён.")
+    
+    if request.method != 'POST':
+        return redirect('admin_users')
+    
+    user_id = request.POST.get('user_id')
+    user = get_object_or_404(User, id=user_id)
+    
+    # Не позволяем удалять суперпользователей
+    if user.is_superuser:
+        messages.error(request, 'Нельзя удалить администратора')
+        return redirect('admin_users')
+    
+    # Не позволяем удалять себя
+    if user == request.user:
+        messages.error(request, 'Нельзя удалить самого себя')
+        return redirect('admin_users')
+    
+    username = user.username
+    user.delete()
+    
+    messages.success(request, f'Пользователь {username} успешно удалён')
+    return redirect('admin_users')
