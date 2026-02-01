@@ -2,534 +2,155 @@
 
 {% block title %}Спортсмены - Wushu Analytics{% endblock %}
 
+{% block page_title %}Спортсмены{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Спортсмены</h1>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus"></i> Добавить спортсмена
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-download"></i> Экспорт
-            </button>
-        </div>
-    </div>
-
     <!-- Statistics Cards -->
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Всего спортсменов
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">3,847</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-people fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-people"></i>
             </div>
+            <div class="stat-value">{{ total_athletes }}</div>
+            <div class="stat-label">Всего спортсменов</div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Активные
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">2,456</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+                <i class="bi bi-geo-alt"></i>
             </div>
+            <div class="stat-value">{{ total_regions }}</div>
+            <div class="stat-label">Регионов</div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Новые за месяц
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">127</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-person-plus fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-award"></i>
             </div>
+            <div class="stat-value">{{ kms_count }}</div>
+            <div class="stat-label">КМС</div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Мастера спорта
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">89</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-award fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="bi bi-star"></i>
             </div>
+            <div class="stat-value">{{ ms_count }}</div>
+            <div class="stat-label">МС</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="bi bi-star-fill"></i>
+            </div>
+            <div class="stat-value">{{ msmk_count }}</div>
+            <div class="stat-label">МСМК</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                <i class="bi bi-person-badge"></i>
+            </div>
+            <div class="stat-value">{{ razryadniki_count }}</div>
+            <div class="stat-label">Разрядники</div>
         </div>
     </div>
 
-    <!-- Filter Section -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Поиск и фильтры</h6>
+    <!-- Search Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-search"></i> Поиск спортсменов</h6>
         </div>
         <div class="card-body">
-            <div class="row">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Введите ФИО спортсмена...">
+                </div>
                 <div class="col-md-4">
-                    <label for="searchInput" class="form-label">Поиск по ФИО</label>
-                    <input type="text" class="form-control" id="searchInput" placeholder="Введите ФИО спортсмена">
-                </div>
-                <div class="col-md-2">
-                    <label for="ageFilter" class="form-label">Возраст</label>
-                    <select class="form-select" id="ageFilter">
-                        <option value="">Все возрасты</option>
-                        <option value="8-12">8-12 лет</option>
-                        <option value="13-16">13-16 лет</option>
-                        <option value="17-20">17-20 лет</option>
-                        <option value="21+">21+ лет</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="disciplineFilter" class="form-label">Дисциплина</label>
-                    <select class="form-select" id="disciplineFilter">
-                        <option value="">Все дисциплины</option>
-                        <option value="taolu">Таолу</option>
-                        <option value="sanda">Саньда</option>
-                        <option value="quanshu">Цюаньшу</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="regionFilter" class="form-label">Регион</label>
                     <select class="form-select" id="regionFilter">
                         <option value="">Все регионы</option>
-                        <option value="moscow">Москва</option>
-                        <option value="spb">Санкт-Петербург</option>
-                        <option value="ekb">Екатеринбург</option>
+                        {% for region in regions %}
+                            <option value="{{ region }}">{{ region }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="rankFilter" class="form-label">Разряд</label>
-                    <select class="form-select" id="rankFilter">
-                        <option value="">Все разряды</option>
-                        <option value="ms">Мастер спорта</option>
-                        <option value="cms">КМС</option>
-                        <option value="adult">Взрослый</option>
-                        <option value="youth">Юношеский</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Athletes -->
-    <div class="row">
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Топ спортсмены месяца</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="badge bg-warning text-dark me-3">🥇</div>
-                                <div>
-                                    <h6 class="mb-1">Иванов Александр</h6>
-                                    <small class="text-muted">Москва • Таолу</small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold">285 очков</div>
-                                <small class="text-success">+12%</small>
-                            </div>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="badge bg-secondary me-3">🥈</div>
-                                <div>
-                                    <h6 class="mb-1">Петрова Мария</h6>
-                                    <small class="text-muted">СПб • Саньда</small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold">278 очков</div>
-                                <small class="text-success">+8%</small>
-                            </div>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="badge bg-danger me-3">🥉</div>
-                                <div>
-                                    <h6 class="mb-1">Сидоров Дмитрий</h6>
-                                    <small class="text-muted">Екатеринбург • Цюаньшу</small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold">265 очков</div>
-                                <small class="text-danger">-2%</small>
-                            </div>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="badge bg-light text-dark me-3">4</div>
-                                <div>
-                                    <h6 class="mb-1">Козлова Анна</h6>
-                                    <small class="text-muted">Казань • Тайцзи</small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold">254 очка</div>
-                                <small class="text-success">+5%</small>
-                            </div>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="badge bg-light text-dark me-3">5</div>
-                                <div>
-                                    <h6 class="mb-1">Новиков Сергей</h6>
-                                    <small class="text-muted">Новосибирск • Таолу</small>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold">248 очков</div>
-                                <small class="text-success">+3%</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Распределение по возрастным категориям</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="ageDistributionChart" width="400" height="200"></canvas>
+                    <button class="btn btn-primary w-100" onclick="filterAthletes()">
+                        <i class="bi bi-funnel"></i> Найти
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Athletes Table -->
-    <div class="card shadow">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">Список спортсменов</h6>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-sort-down"></i> Сортировка
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">По ФИО</a></li>
-                    <li><a class="dropdown-item" href="#">По рейтингу</a></li>
-                    <li><a class="dropdown-item" href="#">По возрасту</a></li>
-                    <li><a class="dropdown-item" href="#">По медалям</a></li>
-                </ul>
-            </div>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-table"></i> Список спортсменов</h6>
+            <span class="badge bg-primary">{{ participants|length }} спортсменов</span>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Спортсмен</th>
-                            <th>Возраст</th>
-                            <th>Регион</th>
-                            <th>Дисциплина</th>
-                            <th>Разряд</th>
-                            <th>Рейтинг</th>
-                            <th>Медали</th>
-                            <th>Статус</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Иванов Александр</div>
-                                        <small class="text-muted">Тренер: Петров В.И.</small>
+            {% if participants %}
+                <div class="table-responsive">
+                    <table class="table" id="athletesTable">
+                        <thead>
+                            <tr>
+                                <th>ФИО</th>
+                                <th>Город/Регион</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for participant in participants %}
+                            <tr class="athlete-row" data-name="{{ participant.name|lower }}" data-region="{{ participant.sity|lower }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="fw-bold">{{ participant.name }}</div>
                                     </div>
-                                </div>
-                            </td>
-                            <td>19 лет</td>
-                            <td>Москва</td>
-                            <td><span class="badge bg-primary">Таолу</span></td>
-                            <td><span class="badge bg-warning">Мастер спорта</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">285</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 95%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning">🥇 12</span>
-                                <span class="badge bg-secondary">🥈 5</span>
-                                <span class="badge bg-danger">🥉 2</span>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Петрова Мария</div>
-                                        <small class="text-muted">Тренер: Смирнова Е.А.</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>17 лет</td>
-                            <td>Санкт-Петербург</td>
-                            <td><span class="badge bg-success">Саньда</span></td>
-                            <td><span class="badge bg-info">КМС</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">278</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 92%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning">🥇 10</span>
-                                <span class="badge bg-secondary">🥈 4</span>
-                                <span class="badge bg-danger">🥉 3</span>
-                            </td>
-                            <td><span class="badge bg-success">Активна</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Сидоров Дмитрий</div>
-                                        <small class="text-muted">Тренер: Козлов Д.С.</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>21 год</td>
-                            <td>Екатеринбург</td>
-                            <td><span class="badge bg-warning">Цюаньшу</span></td>
-                            <td><span class="badge bg-warning">Мастер спорта</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">265</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-warning" style="width: 88%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning">🥇 8</span>
-                                <span class="badge bg-secondary">🥈 6</span>
-                                <span class="badge bg-danger">🥉 4</span>
-                            </td>
-                            <td><span class="badge bg-warning">Травма</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Козлова Анна</div>
-                                        <small class="text-muted">Тренер: Иванова Н.П.</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>16 лет</td>
-                            <td>Казань</td>
-                            <td><span class="badge bg-info">Тайцзи</span></td>
-                            <td><span class="badge bg-primary">Взрослый</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">254</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 85%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning">🥇 6</span>
-                                <span class="badge bg-secondary">🥈 3</span>
-                                <span class="badge bg-danger">🥉 2</span>
-                            </td>
-                            <td><span class="badge bg-success">Активна</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Новиков Сергей</div>
-                                        <small class="text-muted">Тренер: Петров А.В.</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>18 лет</td>
-                            <td>Новосибирск</td>
-                            <td><span class="badge bg-primary">Таолу</span></td>
-                            <td><span class="badge bg-info">КМС</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">248</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 82%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning">🥇 5</span>
-                                <span class="badge bg-secondary">🥈 4</span>
-                                <span class="badge bg-danger">🥉 3</span>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Pagination -->
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">Предыдущий</a>
-                    </li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">Следующий</a>
-                    </li>
-                </ul>
-            </nav>
+                                </td>
+                                <td>
+                                    <i class="bi bi-geo-alt text-muted"></i> {{ participant.sity }}
+                                </td>
+                                <td>
+                                    <a href="{% url 'athlete_detail' participant.id %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-bar-chart"></i> Статистика
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-people display-1 text-muted"></i>
+                    <h5 class="mt-3 text-muted">Спортсмены не найдены</h5>
+                    <p class="text-muted">Запустите парсер для загрузки данных о спортсменах</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
-// Age Distribution Chart
-const ageDistCtx = document.getElementById('ageDistributionChart').getContext('2d');
-const ageDistChart = new Chart(ageDistCtx, {
-    type: 'bar',
-    data: {
-        labels: ['8-10 лет', '11-13 лет', '14-16 лет', '17-19 лет', '20-22 лет', '23+ лет'],
-        datasets: [{
-            label: 'Мужчины',
-            data: [180, 320, 450, 380, 290, 180],
-            backgroundColor: '#4e73df'
-        }, {
-            label: 'Женщины',
-            data: [150, 280, 380, 320, 240, 160],
-            backgroundColor: '#e74a3b'
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top'
-            }
-        },
-        scales: {
-            x: {
-                stacked: true
-            },
-            y: {
-                stacked: true,
-                beginAtZero: true
-            }
-        }
-    }
-});
+function filterAthletes() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const regionValue = document.getElementById('regionFilter').value.toLowerCase();
+    const rows = document.querySelectorAll('.athlete-row');
+    
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        const region = row.dataset.region;
+        
+        const matchesName = name.includes(searchValue);
+        const matchesRegion = regionValue === '' || region.includes(regionValue);
+        
+        row.style.display = (matchesName && matchesRegion) ? '' : 'none';
+    });
+}
+
+document.getElementById('searchInput').addEventListener('keyup', filterAthletes);
+document.getElementById('regionFilter').addEventListener('change', filterAthletes);
 </script>
 {% endblock %}

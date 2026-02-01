@@ -2,417 +2,129 @@
 
 {% block title %}Регионы - Wushu Analytics{% endblock %}
 
+{% block page_title %}Регионы / Команды{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Регионы</h1>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus"></i> Добавить регион
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-download"></i> Экспорт
-            </button>
-        </div>
-    </div>
-
     <!-- Statistics Cards -->
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Всего регионов
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">42</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-geo-alt"></i>
             </div>
+            <div class="stat-value">{{ total_regions }}</div>
+            <div class="stat-label">Всего регионов</div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Активные регионы
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">38</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+                <i class="bi bi-people"></i>
             </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Новые регионы
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">3</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-plus-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stats-card warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Средний рейтинг
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">7.8</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-star fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="stat-value">{{ total_participants }}</div>
+            <div class="stat-label">Всего спортсменов</div>
         </div>
     </div>
 
-    <!-- Regions Map and List -->
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Карта регионов</h6>
-                </div>
-                <div class="card-body">
-                    <div class="ratio ratio-16x9">
-                        <div class="d-flex align-items-center justify-content-center bg-light">
-                            <div class="text-center">
-                                <i class="bi bi-map fa-3x text-muted mb-3"></i>
-                                <h5 class="text-muted">Интерактивная карта России</h5>
-                                <p class="text-muted">Здесь будет отображена карта с активными регионами</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Search Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-search"></i> Поиск команды</h6>
         </div>
-
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Топ регионов</h6>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-10">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Введите название региона...">
                 </div>
-                <div class="card-body">
-                    <canvas id="topRegionsChart" width="400" height="300"></canvas>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="filterRegions()">
+                        <i class="bi bi-funnel"></i> Найти
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Regions Table -->
-    <div class="card shadow">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">Список регионов</h6>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-sort-down"></i> Сортировка
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">По названию</a></li>
-                    <li><a class="dropdown-item" href="#">По участникам</a></li>
-                    <li><a class="dropdown-item" href="#">По соревнованиям</a></li>
-                    <li><a class="dropdown-item" href="#">По рейтингу</a></li>
-                </ul>
-            </div>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-table"></i> Список регионов / команд</h6>
+            <span class="badge bg-primary">{{ regions|length }} регионов</span>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Регион</th>
-                            <th>Федерация</th>
-                            <th>Участники</th>
-                            <th>Соревнования</th>
-                            <th>Медали</th>
-                            <th>Рейтинг</th>
-                            <th>Статус</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Москва</div>
-                                        <small class="text-muted">Центральный ФО</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Московская федерация ушу</td>
-                            <td>456</td>
-                            <td>24</td>
-                            <td>
-                                <span class="badge bg-warning">🥇 18</span>
-                                <span class="badge bg-secondary">🥈 12</span>
-                                <span class="badge bg-danger">🥉 8</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">9.2</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 92%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Санкт-Петербург</div>
-                                        <small class="text-muted">Северо-Западный ФО</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>СПб федерация ушу</td>
-                            <td>324</td>
-                            <td>18</td>
-                            <td>
-                                <span class="badge bg-warning">🥇 14</span>
-                                <span class="badge bg-secondary">🥈 10</span>
-                                <span class="badge bg-danger">🥉 6</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">8.8</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 88%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Московская область</div>
-                                        <small class="text-muted">Центральный ФО</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Мособлфедерация ушу</td>
-                            <td>289</td>
-                            <td>15</td>
-                            <td>
-                                <span class="badge bg-warning">🥇 12</span>
-                                <span class="badge bg-secondary">🥈 8</span>
-                                <span class="badge bg-danger">🥉 5</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">8.5</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 85%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Свердловская область</div>
-                                        <small class="text-muted">Уральский ФО</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Свердловская федерация ушу</td>
-                            <td>198</td>
-                            <td>12</td>
-                            <td>
-                                <span class="badge bg-warning">🥇 8</span>
-                                <span class="badge bg-secondary">🥈 6</span>
-                                <span class="badge bg-danger">🥉 4</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">7.9</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-warning" style="width: 79%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-warning">Неактивен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="ms-3">
-                                        <div class="fw-bold">Республика Татарстан</div>
-                                        <small class="text-muted">Приволжский ФО</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Татарстанская федерация ушу</td>
-                            <td>176</td>
-                            <td>10</td>
-                            <td>
-                                <span class="badge bg-warning">🥇 7</span>
-                                <span class="badge bg-secondary">🥈 5</span>
-                                <span class="badge bg-danger">🥉 3</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">8.2</span>
-                                    <div class="progress" style="height: 6px; width: 60px;">
-                                        <div class="progress-bar bg-success" style="width: 82%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-success">Активен</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info">
-                                        <i class="bi bi-gear"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Pagination -->
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">Предыдущий</a>
-                    </li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">Следующий</a>
-                    </li>
-                </ul>
-            </nav>
+            {% if regions %}
+                <div class="table-responsive">
+                    <table class="table" id="regionsTable">
+                        <thead>
+                            <tr>
+                                <th>Регион</th>
+                                <th>Участники</th>
+                                <th>Соревнования</th>
+                                <th>Медали</th>
+                                <th>Ср. балл (2 года)</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for region in regions %}
+                            <tr class="region-row" data-name="{{ region.name|lower }}">
+                                <td>
+                                    <div class="fw-bold">{{ region.name }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ region.participants_count }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ region.competitions_count }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">🥇 {{ region.gold_count }}</span>
+                                    <span class="badge bg-secondary">🥈 {{ region.silver_count }}</span>
+                                    <span class="badge bg-danger">🥉 {{ region.bronze_count }}</span>
+                                </td>
+                                <td>
+                                    {% if region.avg_score > 0 %}
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2">{{ region.avg_score }}</span>
+                                            <div class="progress" style="height: 6px; width: 60px;">
+                                                <div class="progress-bar bg-success" style="width: {% widthratio region.avg_score 10 100 %}%"></div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'region_detail' region.name %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-bar-chart"></i> Аналитика
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-geo-alt display-1 text-muted"></i>
+                    <h5 class="mt-3 text-muted">Регионы не найдены</h5>
+                    <p class="text-muted">Запустите парсер для загрузки данных</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
-// Top Regions Chart
-const topRegionsCtx = document.getElementById('topRegionsChart').getContext('2d');
-const topRegionsChart = new Chart(topRegionsCtx, {
-    type: 'bar',
-    data: {
-        labels: ['Москва', 'СПб', 'МО', 'Свердловск', 'Татарстан'],
-        datasets: [{
-            label: 'Рейтинг',
-            data: [9.2, 8.8, 8.5, 7.9, 8.2],
-            backgroundColor: [
-                '#4e73df',
-                '#1cc88a',
-                '#36b9cc',
-                '#f6c23e',
-                '#e74a3b'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        indexAxis: 'y',
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                max: 10
-            }
-        }
-    }
-});
+function filterRegions() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.region-row');
+    
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        row.style.display = name.includes(searchValue) ? '' : 'none';
+    });
+}
+
+document.getElementById('searchInput').addEventListener('keyup', filterRegions);
 </script>
 {% endblock %}

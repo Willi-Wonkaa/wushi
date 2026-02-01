@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+
+{% block title %}Соревнования - Wushu Analytics{% endblock %}
+
+{% block page_title %}Соревнования{% endblock %}
+
+{% block content %}
+{% if not selected %}
+<!-- Competition Selection -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Выберите соревнование</h5>
+            </div>
+            <div class="card-body">
+                {% if competitions %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Даты</th>
+                                    <th>Место</th>
+                                    <th>Статус</th>
+                                    <th>Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for comp in competitions %}
+                                <tr>
+                                    <td class="fw-bold">{{ comp.name }}</td>
+                                    <td>{{ comp.start_date|date:"d.m.Y" }} - {{ comp.end_date|date:"d.m.Y" }}</td>
+                                    <td><i class="bi bi-geo-alt"></i> {{ comp.sity }}</td>
+                                    <td>
+                                        {% if comp.start_date > today %}
+                                            <span class="badge-custom badge-warning">скоро</span>
+                                        {% elif comp.end_date < today %}
+                                            <span class="badge-custom badge-secondary">прошли</span>
+                                        {% else %}
+                                            <span class="badge-custom badge-success">идет</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="?competition_id={{ comp.id }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i> Просмотр
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-calendar-x display-4 text-muted"></i>
+                        <p class="text-muted mt-2">Соревнования не найдены</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Competition Detail -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">{{ competition.name }}</h5>
+                    <small class="text-muted">{{ competition.sity }} | {{ competition.start_date|date:"d.m.Y" }} - {{ competition.end_date|date:"d.m.Y" }}</small>
+                </div>
+                <a href="?competition_id=" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> К списку
+                </a>
+            </div>
+            <div class="card-body">
+                {% if detail_data %}
+                    <!-- Regulation Section -->
+                    {% if detail_data.regulation %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">📋 Регламент соревнования</h6>
+                                </div>
+                                <div class="card-body">
+                                    {{ detail_data.regulation|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Categories by Mats -->
+                    {% if detail_data.categories %}
+                        {% if competition_status == 'active' %}
+                            <!-- Current Categories -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card border-success">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="mb-0">🔥 Идущие сейчас</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            {% if has_current_categories %}
+                                                <!-- Контейнер для отфильтрованных категорий -->
+                                                <div class="categories-container">
+                                                    {% for category in detail_data.categories %}
+                                                        {% if category.status == 'current' %}
+                                                            <div class="card mb-3 category-card" data-carpet="" data-status="{{ category.status }}">
+                                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        <h6 class="mb-0">{{ category.name }}</h6>
+                                                                        <small class="text-muted">{{ category.time_range }}</small>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span class="badge bg-success">идет</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    {% if category.participants %}
+                                                                        <div class="table-responsive mt-2">
+                                                                            <table class="table table-sm">
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th>#</th>
+                                                                                        <th>Имя</th>
+                                                                                        <th>Регион</th>
+                                                                                        <th>Время</th>
+                                                                                        <th>Очки</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {% for participant in category.participants %}
+                                                                                    <tr>
+                                                                                        <td>{{ participant.place }}</td>
+                                                                                        <td>{{ participant.name }}</td>
+                                                                                        <td>{{ participant.region }}</td>
+                                                                                        <td>{{ participant.start_time }}</td>
+                                                                                        <td>{{ participant.score }}</td>
+                                                                                    </tr>
+                                                                                    {% endfor %}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <p class="text-muted">Нет идущих сейчас категорий</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                            
+                            <!-- Фильтры и сортировка для всех категорий (показываем всегда) -->
+                            {% if detail_data.categories %}
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">🔍 Фильтры и сортировка категорий</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row mb-3">
+                                                <div class="col-md-3">
+                                                    <label for="carpetFilter" class="form-label">Ковер</label>
+                                                    <select class="form-select form-select-sm" id="carpetFilter">
+                                                        <option value="">Все ковры</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="statusFilter" class="form-label">Статус категории</label>
+                                                    <select class="form-select form-select-sm" id="statusFilter">
+                                                        <option value="">Все статусы</option>
+                                                        <option value="current">Идет</option>
+                                                        <option value="past">Закончилась</option>
+                                                        <option value="next">Следующая</option>
+                                                        <option value="future">Еще не началась</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="categoryFilter" class="form-label">Дисциплина</label>
+                                                    <select class="form-select form-select-sm" id="categoryFilter">
+                                                        <option value="">Все дисциплины</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="ageFilter" class="form-label">Возрастная категория</label>
+                                                    <select class="form-select form-select-sm" id="ageFilter">
+                                                        <option value="">Все возрасты</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label for="sortBy" class="form-label">Сортировка</label>
+                                                    <select class="form-select form-select-sm" id="sortBy">
+                                                        <option value="carpet-asc">Ковер (по возрастанию)</option>
+                                                        <option value="carpet-desc">Ковер (по убыванию)</option>
+                                                        <option value="category">По названию категории</option>
+                                                        <option value="time">По времени</option>
+                                                        <option value="participants">По количеству участников</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 d-flex align-items-end">
+                                                    <button class="btn btn-sm btn-outline-primary me-2" onclick="applyFilters()">Применить</button>
+                                                    <button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">Сбросить</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Контейнер для отфильтрованных категорий -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="filtered-categories-container">
+                                        <!-- Результаты фильтрации будут отображаться здесь -->
+                                    </div>
+                                </div>
+                            </div>
+
+                        <!-- Next Categories -->
+                        {% if has_next_categories %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="mb-3">⏭️ Следующие категории</h6>
+
+                                    {% for category in detail_data.categories %}
+                                        {% if category.status == 'next' %}
+                                            <div class="card mb-3">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-0">{{ category.name }}</h6>
+                                                        <small class="text-muted">{{ category.time_range }}</small>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge bg-info">следующая</span>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    {% if category.participants %}
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>#</th>
+                                                                        <th>Имя</th>
+                                                                        <th>Регион</th>
+                                                                        <th>Время</th>
+                                                                        <th>Оценка</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {% for participant in category.participants %}
+                                                                        <tr>
+                                                                            <td>{{ participant.place }}</td>
+                                                                            <td>{{ participant.name }}</td>
+                                                                            <td>{{ participant.region }}</td>
+                                                                            <td>{{ participant.start_time }}</td>
+                                                                            <td>{{ participant.score }}</td>
+                                                                        </tr>
+                                                                    {% endfor %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    {% else %}
+                                                        <p class="text-muted">Нет участников</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- All Categories by Mats -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mb-3">🏟️ Категории по коврам</h6>
+                                
+                                {% for category in detail_data.categories %}
+                                    <div class="card mb-3">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0">{{ category.name }}</h6>
+                                                <small class="text-muted">{{ category.time_range }}</small>
+                                            </div>
+                                            <div>
+                                                {% if category.status == 'current' %}
+                                                    <span class="badge bg-success">идет</span>
+                                                {% elif category.status == 'past' %}
+                                                    <span class="badge bg-secondary">закончилась</span>
+                                                {% elif category.status == 'next' %}
+                                                    <span class="badge bg-info">следующая</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">еще не началась</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            {% if category.participants %}
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Имя</th>
+                                                                <th>Регион</th>
+                                                                <th>Время</th>
+                                                                <th>Очки</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for participant in category.participants %}
+                                                            <tr>
+                                                                <td>{{ participant.place }}</td>
+                                                                <td>{{ participant.name }}</td>
+                                                                <td>{{ participant.region }}</td>
+                                                                <td>{{ participant.start_time }}</td>
+                                                                <td>{{ participant.score }}</td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            {% else %}
+                                                <p class="text-muted">Участники еще не добавлены</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-info-circle display-4 text-muted"></i>
+                            <p class="text-muted mt-2">Детальная информация о соревновании недоступна</p>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-hourglass-split display-4 text-muted"></i>
+                        <p class="text-muted mt-2">Загрузка информации о соревновании...</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Сохраняем все категории для фильтрации
+    window.allCategories = {{ categories_json|safe }};
+    
+    // Добавляем вычисляемые поля
+    window.allCategories = window.allCategories.map(cat => ({
+        ...cat,
+        carpetNumber: extractCarpetNumber(cat.name),
+        discipline: extractDiscipline(cat.name),
+        ageCategory: extractAgeCategory(cat.name)
+    }));
+    
+    // Инициализируем фильтры
+    initializeFilters();
+});
+
+function initializeFilters() {
+    // Получаем уникальные значения для фильтров
+    const carpets = [...new Set(window.allCategories.map(cat => cat.carpetNumber).filter(n => n))].sort();
+    const disciplines = [...new Set(window.allCategories.map(cat => cat.discipline).filter(d => d && d !== 'Другое'))].sort();
+    const ages = [...new Set(window.allCategories.map(cat => cat.ageCategory).filter(a => a && a !== 'Любой'))].sort();
+    
+    // Заполняем фильтры для идущих категорий
+    const carpetFilter = document.getElementById('carpetFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const ageFilter = document.getElementById('ageFilter');
+    
+    if (carpetFilter) {
+        carpets.forEach(carpet => {
+            carpetFilter.innerHTML += `<option value="${carpet}">Ковер ${carpet}</option>`;
+        });
+    }
+    
+    if (categoryFilter) {
+        disciplines.forEach(discipline => {
+            categoryFilter.innerHTML += `<option value="${discipline}">${discipline}</option>`;
+        });
+    }
+    
+    if (ageFilter) {
+        ages.forEach(age => {
+            ageFilter.innerHTML += `<option value="${age}">${age} лет</option>`;
+        });
+    }
+}
+
+function extractCarpetNumber(name) {
+    const patterns = [/К\s*(\d+)/i, /К(\d+)/i, /Carpet\s*(\d+)/i, /C(\d+)/i];
+    for (let pattern of patterns) {
+        const match = name.match(pattern);
+        if (match) return parseInt(match[1]);
+    }
+    return null;
+}
+
+function extractDiscipline(name) {
+    const disciplines = ['Таолу', 'Санда', 'Дуэлян', 'Цзюаньшу'];
+    for (let discipline of disciplines) {
+        if (name.includes(discipline)) return discipline;
+    }
+    return 'Другое';
+}
+
+function extractAgeCategory(name) {
+    const match = name.match(/(\d+\s*[-–]\s*\d+|\d+\+)/);
+    return match ? match[1] : 'Любой';
+}
+
+function applyFilters() {
+    const carpetFilter = document.getElementById('carpetFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const ageFilter = document.getElementById('ageFilter').value;
+    const sortBy = document.getElementById('sortBy').value;
+    
+    let filtered = window.allCategories.filter(cat => {
+        if (carpetFilter && cat.carpetNumber != carpetFilter) return false;
+        if (statusFilter && cat.status !== statusFilter) return false;
+        if (categoryFilter && cat.discipline !== categoryFilter) return false;
+        if (ageFilter && cat.ageCategory !== ageFilter) return false;
+        return true;
+    });
+    
+    // Сортировка
+    filtered.sort((a, b) => {
+        switch(sortBy) {
+            case 'carpet-asc':
+                return (a.carpetNumber || 999) - (b.carpetNumber || 999);
+            case 'carpet-desc':
+                return (b.carpetNumber || 0) - (a.carpetNumber || 0);
+            case 'category':
+                return a.name.localeCompare(b.name);
+            case 'time':
+                return a.timeRange.localeCompare(b.timeRange);
+            case 'participants':
+                return (b.participants ? b.participants.length : 0) - (a.participants ? a.participants.length : 0);
+            default:
+                return 0;
+        }
+    });
+    
+    displayFilteredCategories(filtered);
+}
+
+function resetFilters() {
+    document.getElementById('carpetFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('ageFilter').value = '';
+    document.getElementById('sortBy').value = 'carpet-asc';
+    applyFilters();
+}
+
+function displayFilteredCategories(categories) {
+    const container = document.querySelector('.filtered-categories-container');
+    if (!container) return;
+    
+    if (categories.length === 0) {
+        container.innerHTML = '<p class="text-muted">Категории не найдены по заданным фильтрам</p>';
+        return;
+    }
+    
+    container.innerHTML = categories.map((cat, index) => `
+        <div class="card mb-3 category-card" data-carpet="${cat.carpetNumber}" data-status="${cat.status}" data-discipline="${cat.discipline}" data-age="${cat.ageCategory}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">${cat.name}</h6>
+                    <small class="text-muted">${cat.timeRange}</small>
+                </div>
+                <div>
+                    ${getStatusBadge(cat.status)}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Имя</th>
+                                <th>Регион</th>
+                                <th>Время</th>
+                                <th>Оценка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${getParticipantsHTML(cat.participants)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'current': '<span class="badge bg-success">идет</span>',
+        'past': '<span class="badge bg-secondary">закончилась</span>',
+        'next': '<span class="badge bg-info">следующая</span>',
+        'future': '<span class="badge bg-warning">еще не началась</span>'
+    };
+    return badges[status] || '';
+}
+
+function getParticipantsHTML(participants) {
+    if (!participants || participants.length === 0) {
+        return '<tr><td colspan="5" class="text-center">Нет участников</td></tr>';
+    }
+    
+    return participants.map(p => `
+        <tr>
+            <td>${p.place || ''}</td>
+            <td>${p.name || ''}</td>
+            <td>${p.region || ''}</td>
+            <td>${p.start_time || ''}</td>
+            <td>${p.score || ''}</td>
+        </tr>
+    `).join('');
+}
+</script>
+{% endblock %}

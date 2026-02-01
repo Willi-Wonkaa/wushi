@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ participant.name }} - Wushu Analytics{% endblock %}
+
+{% block page_title %}{{ participant.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back button -->
+    <div class="mb-4">
+        <a href="{% url 'athletes' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку спортсменов
+        </a>
+    </div>
+
+    <!-- Athlete Header Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h2 class="mb-2">{{ participant.name }}</h2>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-geo-alt"></i> {{ participant.sity }}
+                    </p>
+                    {% if current_age_category %}
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-person"></i> Текущая категория: {{ current_age_category }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini">{{ competitions_count }}</div>
+                                <div class="stat-label-mini">Соревнований</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #ffd700;">{{ gold_count }}</div>
+                                <div class="stat-label-mini">🥇 Золото</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #c0c0c0;">{{ silver_count }}</div>
+                                <div class="stat-label-mini">🥈 Серебро</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #cd7f32;">{{ bronze_count }}</div>
+                                <div class="stat-label-mini">🥉 Бронза</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Timeline Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-graph-up"></i> Изменение балла во времени</h6>
+        </div>
+        <div class="card-body">
+            <canvas id="scoreTimelineChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Competitions Summary Table -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-trophy"></i> Соревнования ({{ competitions_data|length }})</h6>
+        </div>
+        <div class="card-body">
+            {% if competitions_data %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Соревнование</th>
+                            <th>Город</th>
+                            <th>Даты</th>
+                            <th>Участников</th>
+                            <th>Выступлений</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comp_data in competitions_data %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'competitions' %}?competition_id={{ comp_data.competition.id }}" class="text-primary">
+                                    {{ comp_data.competition.name }}
+                                </a>
+                            </td>
+                            <td><i class="bi bi-geo-alt text-muted"></i> {{ comp_data.competition.sity }}</td>
+                            <td>{{ comp_data.competition.start_date|date:"d.m.Y" }} - {{ comp_data.competition.end_date|date:"d.m.Y" }}</td>
+                            <td><span class="badge bg-info">{{ comp_data.participants_count }}</span></td>
+                            <td><span class="badge bg-primary">{{ comp_data.performances_count }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-calendar-x display-4 text-muted"></i>
+                <p class="text-muted mt-2">Нет данных о соревнованиях</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Detailed Competition Blocks -->
+    {% for comp_data in competitions_data %}
+    <div class="card mb-4 competition-block">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ comp_data.competition.name }}</h5>
+                    <small>
+                        <i class="bi bi-geo-alt"></i> {{ comp_data.competition.sity }} | 
+                        <i class="bi bi-calendar"></i> {{ comp_data.competition.start_date|date:"d.m.Y" }} - {{ comp_data.competition.end_date|date:"d.m.Y" }} |
+                        <i class="bi bi-people"></i> {{ comp_data.participants_count }} участников
+                    </small>
+                </div>
+                <a href="{% url 'competitions' %}?competition_id={{ comp_data.competition.id }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-box-arrow-up-right"></i> Перейти
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Score Distribution Histogram for Age Category -->
+            {% if comp_data.age_category %}
+            <div class="mb-4">
+                <h6><i class="bi bi-bar-chart"></i> Распределение баллов в возрастной категории: {{ comp_data.age_category }}</h6>
+                <canvas id="histogram-{{ comp_data.competition.id }}" height="60"></canvas>
+            </div>
+            {% endif %}
+
+            <!-- Each Performance -->
+            {% for perf_data in comp_data.performances %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">{{ perf_data.category_name }}</h6>
+                        <small class="text-muted">{{ perf_data.performance.origin_title }}</small>
+                    </div>
+                    <div>
+                        {% if perf_data.place == 1 %}
+                            <span class="badge bg-warning text-dark">🥇 1 место</span>
+                        {% elif perf_data.place == 2 %}
+                            <span class="badge bg-secondary">🥈 2 место</span>
+                        {% elif perf_data.place == 3 %}
+                            <span class="badge bg-danger">🥉 3 место</span>
+                        {% else %}
+                            <span class="badge bg-info">{{ perf_data.place }} место</span>
+                        {% endif %}
+                        {% if perf_data.performance.mark %}
+                            <span class="badge bg-success">{{ perf_data.performance.mark }} баллов</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Category Participants Table -->
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Имя</th>
+                                    <th>Регион</th>
+                                    <th>Время</th>
+                                    <th>Баллы</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cat_perf in perf_data.category_performances %}
+                                <tr {% if cat_perf.participant.id == participant.id %}class="table-primary"{% endif %}>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        {% if cat_perf.participant.id == participant.id %}
+                                            <strong>{{ cat_perf.participant.name }}</strong>
+                                        {% else %}
+                                            {{ cat_perf.participant.name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cat_perf.participant.sity }}</td>
+                                    <td>{{ cat_perf.est_start_datetime|date:"H:i" }}</td>
+                                    <td>
+                                        {% if cat_perf.mark %}
+                                            <span class="badge bg-success">{{ cat_perf.mark }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Scores Scatter Chart -->
+                    <div class="mb-2">
+                        <h6><i class="bi bi-scatter-chart"></i> График баллов участников</h6>
+                        <canvas id="scatter-{{ comp_data.competition.id }}-{{ forloop.counter }}" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.stat-mini {
+    padding: 0.5rem;
+}
+.stat-value-mini {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.stat-label-mini {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.competition-block .card-header.bg-primary {
+    background: var(--gradient-primary) !important;
+}
+.table-primary {
+    background-color: rgba(0, 136, 204, 0.2) !important;
+}
+.table-primary td {
+    background-color: rgba(0, 136, 204, 0.1) !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Score Timeline Chart
+    const scoreTimeline = {{ score_timeline|safe }};
+    
+    if (scoreTimeline.length > 0) {
+        const timelineCtx = document.getElementById('scoreTimelineChart').getContext('2d');
+        new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: scoreTimeline.map(item => item.date),
+                datasets: [{
+                    label: 'Балл',
+                    data: scoreTimeline.map(item => item.score),
+                    borderColor: '#0088cc',
+                    backgroundColor: 'rgba(0, 136, 204, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#0088cc',
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const item = scoreTimeline[context.dataIndex];
+                                return item.competition + '\n' + item.category;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: Math.min(...scoreTimeline.map(i => i.score)) - 0.5,
+                        max: Math.max(...scoreTimeline.map(i => i.score)) + 0.5,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Histogram charts for each competition
+    {% for comp_data in competitions_data %}
+    {% if comp_data.age_category_scores %}
+    (function() {
+        const scores = {{ comp_data.age_category_scores|safe }};
+        if (scores.length > 0) {
+            // Create histogram bins
+            const minScore = Math.floor(Math.min(...scores));
+            const maxScore = Math.ceil(Math.max(...scores));
+            const binSize = 0.5;
+            const bins = [];
+            const binLabels = [];
+            
+            for (let i = minScore; i <= maxScore; i += binSize) {
+                bins.push(0);
+                binLabels.push(i.toFixed(1));
+            }
+            
+            scores.forEach(score => {
+                const binIndex = Math.floor((score - minScore) / binSize);
+                if (binIndex >= 0 && binIndex < bins.length) {
+                    bins[binIndex]++;
+                }
+            });
+            
+            const histCtx = document.getElementById('histogram-{{ comp_data.competition.id }}');
+            if (histCtx) {
+                new Chart(histCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: binLabels,
+                        datasets: [{
+                            label: 'Количество выступлений',
+                            data: bins,
+                            backgroundColor: 'rgba(0, 136, 204, 0.6)',
+                            borderColor: '#0088cc',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            x: {
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    })();
+    {% endif %}
+    {% endfor %}
+
+    // Scatter charts for category performances
+    {% for comp_data in competitions_data %}
+    {% for perf_data in comp_data.performances %}
+    (function() {
+        const scatterData = [
+            {% for cat_perf in perf_data.category_performances %}
+            {% if cat_perf.mark %}
+            {
+                x: {{ forloop.counter }},
+                y: {{ cat_perf.mark }},
+                name: "{{ cat_perf.participant.name }}",
+                city: "{{ cat_perf.participant.sity }}",
+                isHighlighted: {{ cat_perf.participant.id }} === {{ participant.id }}
+            },
+            {% endif %}
+            {% endfor %}
+        ];
+        
+        if (scatterData.length > 0) {
+            const scatterCtx = document.getElementById('scatter-{{ comp_data.competition.id }}-{{ forloop.counter }}');
+            if (scatterCtx) {
+                new Chart(scatterCtx.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Участники',
+                            data: scatterData.map(d => ({x: d.x, y: d.y})),
+                            pointBackgroundColor: scatterData.map(d => d.isHighlighted ? '#ff6b6b' : '#0088cc'),
+                            pointBorderColor: scatterData.map(d => d.isHighlighted ? '#ff6b6b' : '#0088cc'),
+                            pointRadius: scatterData.map(d => d.isHighlighted ? 10 : 6),
+                            pointHoverRadius: 12,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const item = scatterData[context.dataIndex];
+                                        return item.name + ' (' + item.city + ') - ' + item.y + ' баллов';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Баллы' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Участник #' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    })();
+    {% endfor %}
+    {% endfor %}
+});
+</script>
+{% endblock %}

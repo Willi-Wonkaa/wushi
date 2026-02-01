@@ -718,6 +718,9 @@
                     <button class="btn btn-outline-light" id="parserToggleBtn" title="Запустить парсер">
                         <i class="bi bi-arrow-clockwise" id="parserIcon"></i>
                     </button>
+                    <button class="btn btn-warning" id="fullSyncBtn" title="Полностью обновить данные (временная кнопка)">
+                        <i class="bi bi-cloud-download" id="fullSyncIcon"></i> Полная синхронизация
+                    </button>
                     <a href="#" class="btn-primary-custom">
                         <i class="bi bi-plus-circle"></i>
                         Добавить
@@ -841,6 +844,54 @@
         parserToggleBtn.addEventListener('click', function() {
             startParser();
         });
+
+        // Full sync button functionality
+        const fullSyncBtn = document.getElementById('fullSyncBtn');
+        fullSyncBtn.addEventListener('click', function() {
+            startFullSync();
+        });
+
+        async function startFullSync() {
+            const fullSyncIcon = document.getElementById('fullSyncIcon');
+            const loadingModal = document.getElementById('loadingModal');
+            
+            // Show loading modal
+            loadingModal.classList.add('show');
+            fullSyncIcon.classList.add('parser-spin');
+            
+            // Update loading text for full sync
+            const loadingText = loadingModal.querySelector('.loading-text h6');
+            const loadingSubtext = loadingModal.querySelector('.loading-text p');
+            loadingText.textContent = 'Полная синхронизация данных';
+            loadingSubtext.textContent = 'Это может занять несколько минут...';
+            
+            try {
+                const response = await fetch('/full-sync/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', 'Синхронизация завершена!', result.message);
+                } else {
+                    showNotification('error', 'Ошибка', result.message);
+                }
+            } catch (error) {
+                console.error('Full sync error:', error);
+                showNotification('error', 'Ошибка', 'Произошла ошибка при синхронизации');
+            } finally {
+                loadingModal.classList.remove('show');
+                fullSyncIcon.classList.remove('parser-spin');
+                // Reset loading text
+                loadingText.textContent = 'Данные обновляются';
+                loadingSubtext.textContent = 'Пожалуйста, подождите...';
+            }
+        }
 
         async function startParser() {
             const parserIcon = document.getElementById('parserIcon');

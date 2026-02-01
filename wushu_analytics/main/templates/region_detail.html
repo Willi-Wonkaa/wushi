@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ region_name }} - Wushu Analytics{% endblock %}
+
+{% block page_title %}{{ region_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back button -->
+    <div class="mb-4">
+        <a href="{% url 'regions' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку регионов
+        </a>
+    </div>
+
+    <!-- Region Header Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <h2 class="mb-2"><i class="bi bi-geo-alt"></i> {{ region_name }}</h2>
+                    <p class="text-muted mb-0">Команда региона</p>
+                </div>
+                <div class="col-md-8">
+                    <div class="row text-center">
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini">{{ participants_count }}</div>
+                                <div class="stat-label-mini">Спортсменов</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini">{{ competitions_count }}</div>
+                                <div class="stat-label-mini">Соревнований</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #ffd700;">{{ total_gold }}</div>
+                                <div class="stat-label-mini">🥇 Золото</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #c0c0c0;">{{ total_silver }}</div>
+                                <div class="stat-label-mini">🥈 Серебро</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #cd7f32;">{{ total_bronze }}</div>
+                                <div class="stat-label-mini">🥉 Бронза</div>
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <div class="stat-mini">
+                                <div class="stat-value-mini" style="color: #0088cc;">{{ overall_avg }}</div>
+                                <div class="stat-label-mini">Ср. балл (2г)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participants Table -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-people"></i> Спортсмены команды ({{ participants_count }})</h6>
+        </div>
+        <div class="card-body">
+            {% if participants %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Соревнований</th>
+                            <th>Медали</th>
+                            <th>Ср. балл (2 года)</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participants %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ p.participant.name }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ p.competitions_count }}</span>
+                            </td>
+                            <td>
+                                {% if p.gold > 0 %}
+                                    <span class="badge bg-warning text-dark">🥇 {{ p.gold }}</span>
+                                {% endif %}
+                                {% if p.silver > 0 %}
+                                    <span class="badge bg-secondary">🥈 {{ p.silver }}</span>
+                                {% endif %}
+                                {% if p.bronze > 0 %}
+                                    <span class="badge bg-danger">🥉 {{ p.bronze }}</span>
+                                {% endif %}
+                                {% if p.gold == 0 and p.silver == 0 and p.bronze == 0 %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.avg_score > 0 %}
+                                    <span class="badge bg-success">{{ p.avg_score }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'athlete_detail' p.participant.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-person"></i> Профиль
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-people display-4 text-muted"></i>
+                <p class="text-muted mt-2">Нет данных о спортсменах</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Competitions History -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-trophy"></i> История соревнований команды ({{ competitions_count }})</h6>
+        </div>
+        <div class="card-body">
+            {% if competitions_data %}
+            <div class="table-responsive mb-4">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Соревнование</th>
+                            <th>Город</th>
+                            <th>Даты</th>
+                            <th>Участников (всего)</th>
+                            <th>Команда</th>
+                            <th>Выступлений</th>
+                            <th>Медали</th>
+                            <th>Ср. балл</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comp in competitions_data %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'competitions' %}?competition_id={{ comp.competition.id }}" class="text-primary">
+                                    {{ comp.competition.name }}
+                                </a>
+                            </td>
+                            <td><i class="bi bi-geo-alt text-muted"></i> {{ comp.competition.sity }}</td>
+                            <td>{{ comp.competition.start_date|date:"d.m.Y" }} - {{ comp.competition.end_date|date:"d.m.Y" }}</td>
+                            <td><span class="badge bg-secondary">{{ comp.total_participants }}</span></td>
+                            <td><span class="badge bg-info">{{ comp.team_participants }}</span></td>
+                            <td><span class="badge bg-primary">{{ comp.team_performances }}</span></td>
+                            <td>
+                                {% if comp.gold > 0 %}
+                                    <span class="badge bg-warning text-dark">🥇 {{ comp.gold }}</span>
+                                {% endif %}
+                                {% if comp.silver > 0 %}
+                                    <span class="badge bg-secondary">🥈 {{ comp.silver }}</span>
+                                {% endif %}
+                                {% if comp.bronze > 0 %}
+                                    <span class="badge bg-danger">🥉 {{ comp.bronze }}</span>
+                                {% endif %}
+                                {% if comp.gold == 0 and comp.silver == 0 and comp.bronze == 0 %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if comp.team_avg > 0 %}
+                                    <span class="badge bg-success">{{ comp.team_avg }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-calendar-x display-4 text-muted"></i>
+                <p class="text-muted mt-2">Нет данных о соревнованиях</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Competition Details Blocks -->
+    {% for comp in competitions_data %}
+    <div class="card mb-4 competition-block">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ comp.competition.name }}</h5>
+                    <small>
+                        <i class="bi bi-geo-alt"></i> {{ comp.competition.sity }} | 
+                        <i class="bi bi-calendar"></i> {{ comp.competition.start_date|date:"d.m.Y" }} - {{ comp.competition.end_date|date:"d.m.Y" }}
+                    </small>
+                </div>
+                <a href="{% url 'competitions' %}?competition_id={{ comp.competition.id }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-box-arrow-up-right"></i> Перейти
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini">{{ comp.total_participants }}</div>
+                        <div class="stat-label-mini">Всего участников</div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini">{{ comp.team_participants }}</div>
+                        <div class="stat-label-mini">Наших спортсменов</div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini">{{ comp.team_performances }}</div>
+                        <div class="stat-label-mini">Выступлений</div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini" style="color: #ffd700;">{{ comp.gold }}</div>
+                        <div class="stat-label-mini">🥇 Золото</div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini" style="color: #c0c0c0;">{{ comp.silver }}</div>
+                        <div class="stat-label-mini">🥈 Серебро</div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center">
+                    <div class="stat-mini">
+                        <div class="stat-value-mini" style="color: #cd7f32;">{{ comp.bronze }}</div>
+                        <div class="stat-label-mini">🥉 Бронза</div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if comp.team_avg > 0 %}
+            <div class="alert alert-info">
+                <i class="bi bi-graph-up"></i> Средний балл команды на соревновании: <strong>{{ comp.team_avg }}</strong>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.stat-mini {
+    padding: 0.5rem;
+}
+.stat-value-mini {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.stat-label-mini {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.competition-block .card-header.bg-primary {
+    background: var(--gradient-primary) !important;
+}
+</style>
+{% endblock %}

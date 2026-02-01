@@ -370,3 +370,228 @@ def sync_all_data(request):
     print(f"Детальная информация скачана для {details_count} соревнований")
     print("=== Синхронизация завершена ===")
     print("Competitions written")
+
+
+def parse_category_name(raw_category):
+    """
+    Парсит название категории и извлекает:
+    - номер ковра
+    - возрастную категорию (пол, мин возраст, макс возраст)
+    - дисциплину
+    
+    Примеры входных данных:
+    "Ковер 1 Мальчики (9-11 лет) Чанцюань"
+    "Ковер 2 Девушки (12-14 лет) Наньцюань"
+    """
+    result = {
+        'carpet': 1,
+        'sex': None,
+        'min_age': None,
+        'max_age': None,
+        'discipline': None
+    }
+    
+    # Извлекаем номер ковра
+    carpet_match = re.search(r'Ковер\s*(\d+)', raw_category, re.IGNORECASE)
+    if carpet_match:
+        result['carpet'] = int(carpet_match.group(1))
+    
+    # Извлекаем пол
+    sex_patterns = [
+        (r'Мальчики', 'М'),
+        (r'Девочки', 'Ж'),
+        (r'Юноши', 'М'),
+        (r'Девушки', 'Ж'),
+        (r'Мужчины', 'М'),
+        (r'Женщины', 'Ж'),
+        (r'Юниоры', 'М'),
+        (r'Юниорки', 'Ж'),
+    ]
+    
+    for pattern, sex in sex_patterns:
+        if re.search(pattern, raw_category, re.IGNORECASE):
+            result['sex'] = sex
+            break
+    
+    # Извлекаем возрастной диапазон (9-11 лет) или (12-14)
+    age_match = re.search(r'\((\d+)\s*[-–]\s*(\d+)\s*(?:лет|года|год)?\)', raw_category)
+    if age_match:
+        result['min_age'] = int(age_match.group(1))
+        result['max_age'] = int(age_match.group(2))
+    else:
+        # Попробуем найти просто возраст (18+) или (до 12)
+        age_single = re.search(r'\((\d+)\+?\)', raw_category)
+        if age_single:
+            result['min_age'] = int(age_single.group(1))
+            result['max_age'] = 99
+    
+    # Извлекаем дисциплину - обычно последнее слово или словосочетание после возраста
+    # Убираем ковер, пол и возраст из строки
+    discipline_str = raw_category
+    discipline_str = re.sub(r'Ковер\s*\d+', '', discipline_str, flags=re.IGNORECASE)
+    discipline_str = re.sub(r'(Мальчики|Девочки|Юноши|Девушки|Мужчины|Женщины|Юниоры|Юниорки)', '', discipline_str, flags=re.IGNORECASE)
+    discipline_str = re.sub(r'\(\d+\s*[-–]\s*\d+\s*(?:лет|года|год)?\)', '', discipline_str)
+    discipline_str = re.sub(r'\(\d+\+?\)', '', discipline_str)
+    discipline_str = discipline_str.strip()
+    
+    if discipline_str:
+        result['discipline'] = discipline_str
+    
+    return result
+
+
+def full_sync_all_data():
+    """
+    Полная синхронизация всех данных:
+    1. Скачивает все соревнования
+    2. Для каждого соревнования скачивает все выступления
+    3. Сохраняет участников, категории и выступления в БД
+    """
+    from ..models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
+    from .dataWriter import write_competitions
+    
+    print("=" * 60)
+    print("=== ПОЛНАЯ СИНХРОНИЗАЦИЯ ДАННЫХ ===")
+    print("=" * 60)
+    
+    # 1. Получаем и сохраняем список соревнований
+    print("\n[1/3] Парсинг списка соревнований...")
+    competitions = parse_competitions()
+    write_competitions(competitions)
+    print(f"✓ Список соревнований обновлен: {len(competitions)} соревнований")
+    
+    # 2. Получаем все соревнования из БД
+    all_db_competitions = Competition.objects.all()
+    total_competitions = all_db_competitions.count()
+    
+    print(f"\n[2/3] Скачивание выступлений для {total_competitions} соревнований...")
+    
+    total_performances = 0
+    total_participants = 0
+    
+    for idx, comp in enumerate(all_db_competitions, 1):
+        print(f"\n--- [{idx}/{total_competitions}] {comp.name} ---")
+        
+        if not comp.link:
+            print("  ⚠ Пропуск (нет ссылки)")
+            continue
+        
+        try:
+            detail_data = parse_competition_detail(comp.link)
+            if not detail_data or not detail_data.get('categories'):
+                print("  ⚠ Нет данных о категориях")
+                continue
+            
+            categories = detail_data['categories']
+            print(f"  Найдено категорий: {len(categories)}")
+            
+            for category in categories:
+                category_name = category.get('name', '')
+                participants = category.get('participants', [])
+                
+                if not participants:
+                    continue
+                
+                # Парсим название категории
+                parsed = parse_category_name(category_name)
+                
+                # Получаем или создаем дисциплину
+                discipline_obj = None
+                if parsed['discipline']:
+                    discipline_obj, _ = DisciplineCategory.objects.get_or_create(
+                        name=parsed['discipline']
+                    )
+                
+                # Получаем или создаем возрастную категорию
+                age_category_obj = None
+                if parsed['sex'] and parsed['min_age'] and parsed['max_age']:
+                    age_category_obj, _ = AgeCategory.objects.get_or_create(
+                        min_ages=parsed['min_age'],
+                        max_ages=parsed['max_age'],
+                        sex=parsed['sex']
+                    )
+                
+                # Обрабатываем каждого участника
+                for participant in participants:
+                    participant_name = participant.get('name', '').strip()
+                    participant_region = participant.get('region', '').strip()
+                    start_time = participant.get('start_time', '')
+                    score = participant.get('score', '')
+                    
+                    if not participant_name or not participant_region:
+                        continue
+                    
+                    # Получаем или создаем участника
+                    participant_obj, created = Participant.objects.get_or_create(
+                        name=participant_name,
+                        sity=participant_region
+                    )
+                    if created:
+                        total_participants += 1
+                    
+                    # Парсим время начала
+                    est_start = None
+                    if start_time:
+                        try:
+                            time_parts = start_time.split(':')
+                            if len(time_parts) >= 2:
+                                from datetime import datetime, timedelta
+                                est_start = datetime.combine(
+                                    comp.start_date,
+                                    datetime.strptime(start_time, '%H:%M').time()
+                                )
+                        except:
+                            est_start = datetime.combine(comp.start_date, datetime.min.time())
+                    else:
+                        from datetime import datetime
+                        est_start = datetime.combine(comp.start_date, datetime.min.time())
+                    
+                    # Парсим оценку
+                    mark = None
+                    if score and score.strip() and score.strip() != '-':
+                        try:
+                            mark = float(score.replace(',', '.'))
+                        except:
+                            mark = None
+                    
+                    # Создаем или обновляем выступление
+                    try:
+                        perf_obj, created = Performance.objects.update_or_create(
+                            competition=comp,
+                            participant=participant_obj,
+                            ages_category=age_category_obj,
+                            disciplines_category=discipline_obj,
+                            defaults={
+                                'carpet': parsed['carpet'],
+                                'origin_title': category_name,
+                                'est_start_datetime': est_start,
+                                'mark': mark
+                            }
+                        )
+                        if created:
+                            total_performances += 1
+                    except Exception as e:
+                        print(f"    ⚠ Ошибка при создании выступления: {e}")
+                        continue
+            
+            print(f"  ✓ Обработано")
+            
+        except Exception as e:
+            print(f"  ✗ Ошибка: {e}")
+            continue
+        
+        # Небольшая задержка между соревнованиями
+        time.sleep(SLEEP_TIME)
+    
+    print("\n" + "=" * 60)
+    print("=== СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА ===")
+    print(f"Соревнований: {total_competitions}")
+    print(f"Новых участников: {total_participants}")
+    print(f"Новых выступлений: {total_performances}")
+    print("=" * 60)
+    
+    return {
+        'competitions': total_competitions,
+        'participants': total_participants,
+        'performances': total_performances
+    }
