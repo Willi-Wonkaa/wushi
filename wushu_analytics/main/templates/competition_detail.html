@@ -160,13 +160,21 @@
                                 <h6 class="mb-3">🏟️ Категории по коврам</h6>
                                 
                                 {% for category in detail_data.categories %}
-                                    <div class="card mb-3">
+                                    <div class="card mb-3" id="category-{{ forloop.counter }}">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <div>
                                                 <h6 class="mb-0">{{ category.name }}</h6>
-                                                <small class="text-muted">{{ category.time_range }}</small>
+                                                <small class="text-muted">{{ category.time_range }} | {{ category.participants|length }} выступлений</small>
                                             </div>
-                                            <div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if category.status == 'current' or category.status == 'next' %}
+                                                    <button class="btn btn-sm btn-outline-warning" onclick="showNotificationModal()" title="Уведомления">
+                                                        <i class="bi bi-bell"></i>
+                                                    </button>
+                                                {% endif %}
+                                                <button class="btn btn-sm btn-outline-primary" onclick="showShareModal('category-{{ forloop.counter }}', '{{ category.name }}')" title="Поделиться">
+                                                    <i class="bi bi-share"></i>
+                                                </button>
                                                 {% if category.status == 'current' %}
                                                     <span class="badge bg-success">идет</span>
                                                 {% elif category.status == 'past' %}
@@ -228,4 +236,88 @@
         </div>
     </div>
 </div>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+            <div class="modal-header border-0">
+                <h6 class="modal-title"><i class="bi bi-share"></i> Поделиться категорией</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="shareCategoryName"></p>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="shareLink" readonly>
+                    <button class="btn btn-primary" onclick="copyShareLink()">
+                        <i class="bi bi-clipboard"></i> Копировать
+                    </button>
+                </div>
+                <small class="text-success d-none mt-2" id="copySuccess">Ссылка скопирована!</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="modal fade" id="notificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+            <div class="modal-header border-0">
+                <h6 class="modal-title"><i class="bi bi-bell"></i> Уведомления</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-telegram display-4 text-info mb-3"></i>
+                <p class="mb-0">Авторизуйтесь через ТГ бота для получения уведомлений</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Share Modal Functions
+function showShareModal(categoryId, categoryName) {
+    const url = window.location.origin + window.location.pathname + '#' + categoryId;
+    document.getElementById('shareLink').value = url;
+    document.getElementById('shareCategoryName').textContent = categoryName;
+    document.getElementById('copySuccess').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('shareModal')).show();
+}
+
+function copyShareLink() {
+    const linkInput = document.getElementById('shareLink');
+    linkInput.select();
+    document.execCommand('copy');
+    document.getElementById('copySuccess').classList.remove('d-none');
+    setTimeout(() => {
+        document.getElementById('copySuccess').classList.add('d-none');
+    }, 2000);
+}
+
+// Notification Modal
+function showNotificationModal() {
+    new bootstrap.Modal(document.getElementById('notificationModal')).show();
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        bootstrap.Modal.getInstance(e.target)?.hide();
+    }
+});
+
+// Scroll to anchor on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.hash) {
+        const element = document.querySelector(window.location.hash);
+        if (element) {
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                element.classList.add('border-primary');
+            }, 300);
+        }
+    }
+});
+</script>
 {% endblock %}

@@ -1021,10 +1021,10 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo">
+            <a href="{% url 'dashboard' %}" class="logo" style="text-decoration: none;">
                 <i class="bi bi-trophy"></i>
                 <span>Wushu Analytics</span>
-            </div>
+            </a>
             <button class="sidebar-toggle" id="sidebarToggleBtn">
                 <i class="bi bi-list"></i>
             </button>
@@ -1411,6 +1411,88 @@
             }
             return cookieValue;
         }
+
+        // Table Sorting Functionality
+        // States: 0 = original, 1 = descending, 2 = ascending
+        document.addEventListener('DOMContentLoaded', function() {
+            const tables = document.querySelectorAll('table.sortable, table');
+            
+            tables.forEach(table => {
+                const headers = table.querySelectorAll('th');
+                const tbody = table.querySelector('tbody');
+                if (!tbody) return;
+                
+                // Store original order
+                const originalRows = Array.from(tbody.querySelectorAll('tr'));
+                
+                headers.forEach((header, columnIndex) => {
+                    header.style.cursor = 'pointer';
+                    header.style.userSelect = 'none';
+                    header.dataset.sortState = '0';
+                    
+                    // Add sort indicator
+                    const indicator = document.createElement('span');
+                    indicator.className = 'sort-indicator ms-1';
+                    indicator.innerHTML = '<i class="bi bi-arrow-down-up" style="opacity: 0.3;"></i>';
+                    header.appendChild(indicator);
+                    
+                    header.addEventListener('click', function() {
+                        const currentState = parseInt(this.dataset.sortState);
+                        const nextState = (currentState + 1) % 3;
+                        this.dataset.sortState = nextState;
+                        
+                        // Reset other headers
+                        headers.forEach(h => {
+                            if (h !== this) {
+                                h.dataset.sortState = '0';
+                                const ind = h.querySelector('.sort-indicator');
+                                if (ind) ind.innerHTML = '<i class="bi bi-arrow-down-up" style="opacity: 0.3;"></i>';
+                            }
+                        });
+                        
+                        // Update indicator
+                        const ind = this.querySelector('.sort-indicator');
+                        if (nextState === 0) {
+                            ind.innerHTML = '<i class="bi bi-arrow-down-up" style="opacity: 0.3;"></i>';
+                            // Restore original order
+                            originalRows.forEach(row => tbody.appendChild(row));
+                        } else if (nextState === 1) {
+                            ind.innerHTML = '<i class="bi bi-arrow-down"></i>';
+                            sortTable(tbody, columnIndex, true);
+                        } else {
+                            ind.innerHTML = '<i class="bi bi-arrow-up"></i>';
+                            sortTable(tbody, columnIndex, false);
+                        }
+                    });
+                });
+            });
+            
+            function sortTable(tbody, columnIndex, descending) {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                
+                rows.sort((a, b) => {
+                    const aCell = a.cells[columnIndex];
+                    const bCell = b.cells[columnIndex];
+                    if (!aCell || !bCell) return 0;
+                    
+                    let aVal = aCell.textContent.trim();
+                    let bVal = bCell.textContent.trim();
+                    
+                    // Try to parse as number
+                    const aNum = parseFloat(aVal.replace(/[^\d.-]/g, ''));
+                    const bNum = parseFloat(bVal.replace(/[^\d.-]/g, ''));
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return descending ? bNum - aNum : aNum - bNum;
+                    }
+                    
+                    // String comparison
+                    return descending ? bVal.localeCompare(aVal, 'ru') : aVal.localeCompare(bVal, 'ru');
+                });
+                
+                rows.forEach(row => tbody.appendChild(row));
+            }
+        });
 
         // Simple notification function
         function showNotification(type, title, message) {

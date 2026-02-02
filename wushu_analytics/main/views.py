@@ -295,6 +295,8 @@ def region_detail(request, region_name):
         mark__isnull=False
     ).aggregate(avg=Avg('mark'))['avg'] or 0
     
+    total_medals = total_gold + total_silver + total_bronze
+    
     context = {
         'region_name': region_name,
         'participants': participants_data,
@@ -304,6 +306,7 @@ def region_detail(request, region_name):
         'total_gold': total_gold,
         'total_silver': total_silver,
         'total_bronze': total_bronze,
+        'total_medals': total_medals,
         'overall_avg': round(overall_avg, 2) if overall_avg else 0,
     }
     
@@ -514,6 +517,8 @@ def athlete_detail(request, athlete_id):
             'category': perf.origin_title,
         })
     
+    total_medals = gold_count + silver_count + bronze_count
+    
     context = {
         'participant': participant,
         'competitions_count': competitions_count,
@@ -522,6 +527,7 @@ def athlete_detail(request, athlete_id):
         'gold_count': gold_count,
         'silver_count': silver_count,
         'bronze_count': bronze_count,
+        'total_medals': total_medals,
         'avg_score': round(avg_score, 2) if avg_score else 0,
         'competitions_data': competitions_data,
         'score_timeline': json.dumps(score_timeline),
