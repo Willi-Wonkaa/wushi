@@ -5,6 +5,29 @@
 {% block page_title %}{{ competition.name }}{% endblock %}
 
 {% block content %}
+<style>
+    .notification-bell {
+        border: 1px solid #6c757d;
+        color: #6c757d;
+        background: transparent;
+        transition: all 0.3s ease;
+    }
+    .notification-bell:hover {
+        background: rgba(255, 193, 7, 0.1);
+        border-color: #ffc107;
+        color: #ffc107;
+    }
+    .notification-bell.bell-active {
+        background: #ffc107 !important;
+        border-color: #ffc107 !important;
+        color: #000 !important;
+        animation: bellPulse 2s infinite;
+    }
+    @keyframes bellPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+    }
+</style>
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -168,11 +191,15 @@
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if category.status == 'current' or category.status == 'next' %}
-                                                    <button class="btn btn-sm btn-outline-warning" onclick="showNotificationModal()" title="Уведомления">
+                                                    <button class="btn btn-sm notification-bell" 
+                                                            id="bell-{{ forloop.counter }}" 
+                                                            onclick="toggleNotification('{{ forloop.counter }}', '{{ category.name }}')" 
+                                                            title="Уведомления"
+                                                            data-active="false">
                                                         <i class="bi bi-bell"></i>
                                                     </button>
                                                 {% endif %}
-                                                <button class="btn btn-sm btn-outline-primary" onclick="showShareModal('category-{{ forloop.counter }}', '{{ category.name }}')" title="Поделиться">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="showShareModal('category-{{ forloop.counter }}', '{{ category.name }}', '{{ competition.id }}')" title="Поделиться">
                                                     <i class="bi bi-share"></i>
                                                 </button>
                                                 {% if category.status == 'current' %}
@@ -276,9 +303,14 @@
 </div>
 
 <script>
+// User authorization state (from Django context)
+const isOverlord = {{ user.is_superuser|yesno:"true,false" }};
+const hasTelegramAuth = false; // Заглушка - позже будет проверка через ТГ
+const canReceiveNotifications = isOverlord || hasTelegramAuth;
+
 // Share Modal Functions
-function showShareModal(categoryId, categoryName) {
-    const url = window.location.origin + window.location.pathname + '#' + categoryId;
+function showShareModal(categoryId, categoryName, competitionId) {
+    const url = window.location.origin + '/competitions/?competition_id=' + competitionId + '#' + categoryId;
     document.getElementById('shareLink').value = url;
     document.getElementById('shareCategoryName').textContent = categoryName;
     document.getElementById('copySuccess').classList.add('d-none');
@@ -288,16 +320,58 @@ function showShareModal(categoryId, categoryName) {
 function copyShareLink() {
     const linkInput = document.getElementById('shareLink');
     linkInput.select();
-    document.execCommand('copy');
-    document.getElementById('copySuccess').classList.remove('d-none');
-    setTimeout(() => {
-        document.getElementById('copySuccess').classList.add('d-none');
-    }, 2000);
+    navigator.clipboard.writeText(linkInput.value).then(() => {
+        document.getElementById('copySuccess').classList.remove('d-none');
+        setTimeout(() => {
+            document.getElementById('copySuccess').classList.add('d-none');
+        }, 2000);
+    });
 }
 
-// Notification Modal
-function showNotificationModal() {
-    new bootstrap.Modal(document.getElementById('notificationModal')).show();
+// Notification Bell Toggle
+function toggleNotification(categoryIndex, categoryName) {
+    const bell = document.getElementById('bell-' + categoryIndex);
+    const isActive = bell.dataset.active === 'true';
+    
+    if (!canReceiveNotifications) {
+        // Показываем модальное окно для неавторизованных
+        new bootstrap.Modal(document.getElementById('notificationModal')).show();
+        return;
+    }
+    
+    // Переключаем состояние
+    if (isActive) {
+        bell.dataset.active = 'false';
+        bell.classList.remove('btn-warning', 'bell-active');
+        bell.classList.add('btn-outline-secondary');
+        bell.innerHTML = '<i class="bi bi-bell"></i>';
+        showToast('Уведомления отключены', 'Вы больше не будете получать уведомления о категории "' + categoryName + '"', 'info');
+    } else {
+        bell.dataset.active = 'true';
+        bell.classList.remove('btn-outline-secondary');
+        bell.classList.add('btn-warning', 'bell-active');
+        bell.innerHTML = '<i class="bi bi-bell-fill"></i>';
+        showToast('Уведомления включены', 'Вы будете получать уведомления о категории "' + categoryName + '"', 'success');
+    }
+}
+
+// Toast notification
+function showToast(title, message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-${type === 'success' ? 'success' : 'secondary'} text-white">
+                <i class="bi bi-bell${type === 'success' ? '-fill' : ''} me-2"></i>
+                <strong class="me-auto">${title}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 // Close modal when clicking outside
