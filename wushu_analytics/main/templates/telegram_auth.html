@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход через Telegram - Wushu Analytics{% endblock %}
+
+{% block page_title %}Вход через Telegram{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center">
+                <i class="bi bi-telegram display-4 text-primary mb-3"></i>
+                <h5 class="card-title mb-0">Вход через Telegram</h5>
+                <p class="text-muted">Введите секретный код из Telegram бота</p>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="secret_code" class="form-label">Секретный код</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">
+                                <i class="bi bi-key"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control text-center fw-bold" 
+                                   id="secret_code" 
+                                   name="secret_code" 
+                                   placeholder="XXXXXXXX" 
+                                   maxlength="8"
+                                   style="letter-spacing: 2px; text-transform: uppercase;"
+                                   required>
+                        </div>
+                        <div class="form-text">
+                            8 символов, полученных от Telegram бота @testtestteserwerwwt_bot
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>Как получить код?</h6>
+                        <ol class="mb-0">
+                            <li>Откройте Telegram и найдите бота @testtestteserwerwwt_bot</li>
+                            <li>Отправьте команду <code>/start</code></li>
+                            <li>Бот пришлет вам секретный код</li>
+                            <li>Введите этот код в поле выше</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-telegram me-2"></i>
+                            Войти через Telegram
+                        </button>
+                        <a href="{% url 'register' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-person-plus me-2"></i>
+                            Или зарегистрироваться по email
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('secret_code');
+    
+    // Автоматическое форматирование и преобразование в верхний регистр
+    input.addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+    
+    // Автоматический фокус на поле ввода
+    input.focus();
+});
+</script>
+{% endblock %}

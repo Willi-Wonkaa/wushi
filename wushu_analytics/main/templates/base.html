@@ -1057,8 +1057,8 @@
                 </a>
             </div>
             
-            <!-- Регионы - только для тренеров и админов -->
-            {% if user.is_authenticated and user.is_superuser or user.coach_profile %}
+            <!-- Регионы - доступны всем зарегистрированным пользователям -->
+            {% if user.is_authenticated %}
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'regions' %}active{% endif %}" href="{% url 'regions' %}">
                     <i class="bi bi-geo-alt"></i>
@@ -1067,8 +1067,8 @@
             </div>
             {% endif %}
             
-            <!-- Спортсмены - только для тренеров и админов -->
-            {% if user.is_authenticated and user.is_superuser or user.coach_profile %}
+            <!-- Спортсмены - доступны всем зарегистрированным пользователям -->
+            {% if user.is_authenticated %}
             <div class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'athletes' %}active{% endif %}" href="{% url 'athletes' %}">
                     <i class="bi bi-person"></i>
@@ -1120,6 +1120,7 @@
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><span class="dropdown-item-text"><i class="bi bi-person"></i> {{ user.username }}</span></li>
+                                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> Мой профиль</a></li>
                                 {% if user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'admin_users' %}"><i class="bi bi-people"></i> Управление пользователями</a></li>
                                 <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Django Admin</a></li>
@@ -1132,7 +1133,8 @@
                                     <strong>Гость</strong>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Войти</a></li>
+                                <li><a class="dropdown-item" href="{% url 'register' %}"><i class="bi bi-person-plus"></i> Регистрация</a></li>
+                                <li><a class="dropdown-item" href="{% url 'telegram_auth' %}"><i class="bi bi-telegram"></i> Войти через Telegram</a></li>
                             {% endif %}
                         </ul>
                     </div>

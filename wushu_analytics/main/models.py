@@ -144,3 +144,81 @@ class AthleteStatistics(models.Model):
     
     def __str__(self):
         return f"{self.participant.name} - {self.gold_count} {self.silver_count} {self.bronze_count}"
+
+
+class UserProfile(models.Model):
+    """Профиль обычного пользователя с доступом к просмотру"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='user_profile')
+    telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_username = models.CharField(max_length=255, null=True, blank=True)
+    telegram_chat_id = models.BigIntegerField(null=True, blank=True)
+    is_telegram_verified = models.BooleanField(default=False)
+    telegram_verification_code = models.CharField(max_length=32, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Профиль пользователя"
+        verbose_name_plural = "Профили пользователей"
+    
+    def __str__(self):
+        return f"{self.user.username} - {'✓' if self.is_telegram_verified else '✗'}"
+    
+    def generate_verification_code(self):
+        """Генерирует код верификации для Telegram"""
+        import secrets
+        self.telegram_verification_code = secrets.token_urlsafe(16)
+        self.save()
+        return self.telegram_verification_code
+
+
+class NotificationSubscription(models.Model):
+    """Подписки пользователя на уведомления"""
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='subscriptions')
+    
+    # Типы отслеживаемых объектов
+    SUBSCRIPTION_TYPES = [
+        ('competition', 'Соревнование'),
+        ('participant', 'Участник'),
+        ('region', 'Команда/Регион'),
+        ('category', 'Категория соревнования'),
+    ]
+    
+    subscription_type = models.CharField(max_length=20, choices=SUBSCRIPTION_TYPES)
+    competition_id = models.IntegerField(null=True, blank=True, help_text="ID соревнования для типа 'competition' и 'category'")
+    participant_id = models.IntegerField(null=True, blank=True, help_text="ID участника для типа 'participant'")
+    region_name = models.CharField(max_length=100, null=True, blank=True, help_text="Название региона для типа 'region'")
+    category_identifier = models.CharField(max_length=255, null=True, blank=True, help_text="Идентификатор категории для типа 'category'")
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Подписка на уведомления"
+        verbose_name_plural = "Подписки на уведомления"
+        unique_together = [
+            ['user_profile', 'subscription_type', 'competition_id', 'participant_id', 'region_name', 'category_identifier']
+        ]
+    
+    def __str__(self):
+        return f"{self.user_profile.user.username} - {self.get_subscription_type_display()}"
+    
+    def get_target_name(self):
+        """Возвращает имя отслеживаемого объекта"""
+        if self.subscription_type == 'competition':
+            try:
+                from .models import Competition
+                return Competition.objects.get(id=self.competition_id).name
+            except Competition.DoesNotExist:
+                return f"Соревнование #{self.competition_id}"
+        elif self.subscription_type == 'participant':
+            try:
+                from .models import Participant
+                return Participant.objects.get(id=self.participant_id).name
+            except Participant.DoesNotExist:
+                return f"Участник #{self.participant_id}"
+        elif self.subscription_type == 'region':
+            return self.region_name or "Неизвестный регион"
+        elif self.subscription_type == 'category':
+            return self.category_identifier or "Неизвестная категория"
+        return "Неизвестный объект"

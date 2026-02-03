@@ -18,6 +18,14 @@ urlpatterns = [
     path('full-sync/', views.full_sync, name='full_sync'),
     path('check-categories/', views.check_categories, name='check_categories'),
     
+    # User registration and profile
+    path('auth/telegram/', views.telegram_auth_view, name='telegram_auth'),
+    path('register/', views.register_view, name='register'),
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/generate-code/', views.generate_verification_code, name='generate_verification_code'),
+    path('profile/unsubscribe/', views.unsubscribe_notification, name='unsubscribe_notification'),
+    path('toggle-subscription/', views.toggle_subscription, name='toggle_subscription'),
+    
     # Custom admin panel
     path('manage/users/', views.admin_users, name='admin_users'),
     path('manage/users/add/', views.admin_add_user, name='admin_add_user'),

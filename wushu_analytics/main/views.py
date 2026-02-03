@@ -1,7 +1,12 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from datetime import date
-from .models import Competition
+from .models import Competition, UserProfile, NotificationSubscription
 import sys
 import os
 
@@ -147,19 +152,13 @@ def competitions(request):
     return render(request, "competitions.html", context)
 
 def regions(request):
-    """Страница списка регионов/команд - только для тренеров и администраторов"""
+    """Страница списка регионов/команд - для всех зарегистрированных пользователей"""
     from .models import RegionStatistics
     from django.http import HttpResponseForbidden
     
-    # Проверка доступа: только авторизованные тренеры или администраторы
+    # Проверка доступа: только для авторизованных пользователей
     if not request.user.is_authenticated:
-        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
-    
-    is_admin = request.user.is_superuser
-    is_coach = hasattr(request.user, 'coach_profile')
-    
-    if not is_admin and not is_coach:
-        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/register/'>зарегистрируйтесь</a> для доступа.")
     
     # Получаем статистику регионов из сводной таблицы
     regions_stats = RegionStatistics.objects.all().order_by('-gold_count', '-silver_count', '-bronze_count')
@@ -313,19 +312,13 @@ def region_detail(request, region_name):
     return render(request, "region_detail.html", context)
 
 def athletes(request):
-    """Страница списка спортсменов - только для тренеров и администраторов"""
+    """Страница списка спортсменов - для всех зарегистрированных пользователей"""
     from .models import Participant, AthleteStatistics
     from django.http import HttpResponseForbidden
     
-    # Проверка доступа: только авторизованные тренеры или администраторы
+    # Проверка доступа: только для авторизованных пользователей
     if not request.user.is_authenticated:
-        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, войдите в систему.")
-    
-    is_admin = request.user.is_superuser
-    is_coach = hasattr(request.user, 'coach_profile')
-    
-    if not is_admin and not is_coach:
-        return HttpResponseForbidden("Доступ запрещён. Только для тренеров и администраторов.")
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/register/'>зарегистрируйтесь</a> для доступа.")
     
     # Получаем всех спортсменов со статистикой
     participants_with_stats = []
@@ -987,3 +980,183 @@ def admin_delete_user(request):
     
     messages.success(request, f'Пользователь {username} успешно удалён')
     return redirect('admin_users')
+
+
+def telegram_auth_view(request):
+    """Аутентификация через секретный код от Telegram бота"""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        secret_code = request.POST.get('secret_code', '').upper().strip()
+        
+        if not secret_code or len(secret_code) != 8:
+            messages.error(request, 'Неверный формат кода. Введите 8 символов.')
+            return render(request, 'telegram_auth.html')
+        
+        # Здесь должна быть проверка кода с ботом
+        # Временное решение для демонстрации
+        if secret_code == "DEMO1234":
+            # Создаем пользователя автоматически
+            username = f"telegram_user_{secret_code}"
+            email = f"telegram_{secret_code}@wushu.local"
+            
+            # Проверяем, существует ли пользователь
+            user = User.objects.filter(username=username).first()
+            if not user:
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=User.objects.make_random_password()
+                )
+            
+            # Создаем или получаем профиль
+            profile, created = UserProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'telegram_id': 12345,  # Временно
+                    'telegram_username': 'demo_user',
+                    'telegram_chat_id': 12345,
+                    'is_telegram_verified': True
+                }
+            )
+            
+            login(request, user)
+            messages.success(request, 'Вы успешно вошли через Telegram!')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Неверный код. Проверьте код от Telegram бота.')
+    
+    return render(request, 'telegram_auth.html')
+
+
+def register_view(request):
+    """Регистрация нового пользователя"""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Создаем профиль пользователя
+            UserProfile.objects.create(user=user)
+            login(request, user)
+            return redirect('profile')
+    else:
+        form = UserCreationForm()
+    
+    return render(request, 'register.html', {'form': form})
+
+
+@login_required
+def profile_view(request):
+    """Страница профиля пользователя"""
+    try:
+        profile = request.user.user_profile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=request.user)
+    
+    subscriptions = profile.subscriptions.filter(is_active=True)
+    
+    context = {
+        'profile': profile,
+        'subscriptions': subscriptions
+    }
+    return render(request, 'profile.html', context)
+
+
+@login_required
+@require_POST
+def generate_verification_code(request):
+    """Генерация кода верификации Telegram"""
+    try:
+        profile = request.user.user_profile
+        code = profile.generate_verification_code()
+        return JsonResponse({
+            'success': True,
+            'code': code
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+@require_POST
+@csrf_exempt
+def unsubscribe_notification(request):
+    """Отписка от уведомлений"""
+    try:
+        import json
+        data = json.loads(request.body)
+        subscription_id = data.get('subscription_id')
+        
+        profile = request.user.user_profile
+        subscription = profile.subscriptions.get(id=subscription_id)
+        subscription.is_active = False
+        subscription.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+@require_POST
+@csrf_exempt
+def toggle_subscription(request):
+    """Переключение подписки на уведомления"""
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        subscription_type = data.get('subscription_type')
+        competition_id = data.get('competition_id')
+        participant_id = data.get('participant_id')
+        region_name = data.get('region_name')
+        category_identifier = data.get('category_identifier')
+        
+        profile = request.user.user_profile
+        
+        # Ищем существующую подписку
+        subscription = profile.subscriptions.filter(
+            subscription_type=subscription_type,
+            competition_id=competition_id,
+            participant_id=participant_id,
+            region_name=region_name,
+            category_identifier=category_identifier
+        ).first()
+        
+        if subscription:
+            # Если подписка существует, деактивируем её
+            subscription.is_active = not subscription.is_active
+            subscription.save()
+            is_subscribed = subscription.is_active
+        else:
+            # Создаем новую подписку
+            subscription = NotificationSubscription.objects.create(
+                user_profile=profile,
+                subscription_type=subscription_type,
+                competition_id=competition_id,
+                participant_id=participant_id,
+                region_name=region_name,
+                category_identifier=category_identifier,
+                is_active=True
+            )
+            is_subscribed = True
+        
+        return JsonResponse({
+            'success': True,
+            'is_subscribed': is_subscribed
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
