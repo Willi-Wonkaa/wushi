@@ -1,9 +1,10 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import sys
-import django
+from datetime import timedelta
 from pathlib import Path
+
+import django
 from asgiref.sync import sync_to_async
 
 # Django setup
@@ -14,25 +15,14 @@ django.setup()
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from main.models import UserProfile
+from django.utils import timezone
+from main.models import UserProfile, TelegramLoginToken
+
+LOGIN_TOKEN_TTL_MINUTES = 5
+LOGIN_BASE_URL = os.getenv('SITE_BASE_URL', 'http://localhost:8000')
+LOGIN_PATH = '/auth/telegram/'
 
 # Создаем синхронные функции для работы с Django ORM
-@sync_to_async
-def get_user_profile(telegram_id):
-    """Получить профиль пользователя по telegram_id"""
-    try:
-        return UserProfile.objects.get(telegram_id=telegram_id)
-    except UserProfile.DoesNotExist:
-        return None
-
-@sync_to_async
-def get_user_profile_by_verification_code(code):
-    """Получить профиль пользователя по коду верификации"""
-    try:
-        return UserProfile.objects.get(telegram_verification_code=code)
-    except UserProfile.DoesNotExist:
-        return None
-
 @sync_to_async
 def get_user_profile_by_telegram_id(telegram_id, verified_only=False):
     """Получить профиль пользователя по telegram_id"""
@@ -50,46 +40,75 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Приветствие при старте бота с генерацией секретного кода"""
+@sync_to_async
+def create_login_token(user, chat_id):
+    """Создать одноразовую ссылку входа"""
+    import secrets
+
+    logger.info(f"Creating token for telegram_id={user.id}, username={user.username}, chat_id={chat_id}")
+
+    TelegramLoginToken.objects.filter(telegram_id=user.id).delete()
+    token_value = secrets.token_urlsafe(32)
+    expires_at = timezone.now() + timedelta(minutes=LOGIN_TOKEN_TTL_MINUTES)
+
+    token_obj = TelegramLoginToken.objects.create(
+        telegram_id=user.id,
+        telegram_username=user.username,
+        telegram_first_name=user.first_name,
+        telegram_last_name=user.last_name,
+        telegram_chat_id=chat_id,
+        token=token_value,
+        expires_at=expires_at,
+    )
+
+    logger.info(f"Created token: {token_value[:8]}..., expires at: {expires_at}")
+    return token_value
+
+
+def build_login_link(token_value: str) -> str:
+    base_url = LOGIN_BASE_URL.rstrip('/')
+    return f"{base_url}{LOGIN_PATH}?token={token_value}"
+
+
+async def send_login_link(update: Update) -> None:
+    """Отправить пользователю ссылку для входа"""
     user = update.effective_user
-    
-    # Проверяем, есть ли пользователь в системе
-    profile = await get_user_profile(user.id)
-    if profile:
-        if profile.is_telegram_verified:
-            await update.message.reply_html(
-                f"Добро пожаловать, {user.mention_html()}! "
-                f"Ваш Telegram аккаунт уже привязан к профилю {profile.user.username}.\n\n"
-                f"Используйте /subscriptions для просмотра подписок."
-            )
-        else:
-            await update.message.reply_html(
-                f"Привет, {user.mention_html()}! "
-                f"Ваш профиль найден, но не подтверждён. "
-                f"Используйте команду /verify <код> для подтверждения."
-            )
-    else:
-        # Генерируем секретный код для нового пользователя
-        import secrets
-        secret_code = secrets.token_urlsafe(6)[:8].upper()  # 8 символов
+    chat_id = update.effective_chat.id if update.effective_chat else None
+
+    logger.info(f"Creating login token for user {user.id}, username: {user.username}, chat_id: {chat_id}")
+
+    try:
+        token_value = await create_login_token(user, chat_id)
+        login_link = build_login_link(token_value)
         
-        # Сохраняем временные данные в сессию или кэш
-        context.user_data['secret_code'] = secret_code
-        context.user_data['telegram_id'] = user.id
-        context.user_data['telegram_username'] = user.username
-        
+        logger.info(f"Created login link: {login_link}")
+
         await update.message.reply_html(
-            f"👋 Привет, {user.mention_html()}!\n\n"
-            f"🔑 Ваш секретный код для регистрации на сайте:\n"
-            f"<code>{secret_code}</code>\n\n"
-            f"📝 Инструкция:\n"
-            f"1. Перейдите на сайт и введите этот код\n"
-            f"2. Ваш аккаунт будет создан автоматически\n"
-            f"3. Telegram будет привязан для уведомлений\n\n"
-            f"⏰ Код действителен 10 минут\n"
-            f"💾 Сохраните этот код!"
+            f"🔐 Ваша ссылка для входа на сайт:\n"
+            f"<a href=\"{login_link}\">Войти в Wushu Analytics</a>\n\n"
+            f"⏰ Ссылка действует {LOGIN_TOKEN_TTL_MINUTES} минут."
         )
+    except Exception as e:
+        logger.error(f"Error creating login link: {e}")
+        await update.message.reply_text(
+            "❌ Произошла ошибка при создании ссылки. Попробуйте еще раз."
+        )
+
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Приветствие при старте бота с отправкой ссылки входа"""
+    user = update.effective_user
+
+    profile = await get_user_profile_by_telegram_id(user.id)
+    if profile and profile.is_telegram_verified:
+        await update.message.reply_html(
+            f"Добро пожаловать, {user.mention_html()}! "
+            f"Ваш Telegram уже привязан к профилю {profile.user.username}.\n\n"
+            f"Чтобы войти на сайт снова, используйте /login."
+        )
+        return
+
+    await send_login_link(update)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -97,8 +116,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(
         "📋 Доступные команды:\n\n"
         "/start - Начать работу с ботом\n"
+        "/login - Получить ссылку для входа\n"
         "/help - Показать это сообщение\n"
-        "/verify <код> - Подтвердить привязку аккаунта\n"
         "/status - Проверить статус привязки\n"
         "/subscriptions - Показать мои подписки\n\n"
         "После привязки аккаунта вы будете получать уведомления об отслеживаемых соревнованиях, "
@@ -106,51 +125,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
-@sync_to_async
-def update_profile_verification(profile, user, chat_id):
-    """Обновление профиля верификации"""
-    profile.telegram_id = user.id
-    profile.telegram_username = user.username
-    profile.telegram_chat_id = chat_id
-    profile.is_telegram_verified = True
-    profile.telegram_verification_code = None
-    profile.save()
-
-async def verify_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Подтверждение привязки аккаунта"""
-    if not context.args:
-        await update.message.reply_text(
-            "❌ Укажите код верификации.\n"
-            "Используйте: /verify <ваш_код>"
-        )
-        return
-    
-    verification_code = context.args[0]
-    user = update.effective_user
-    
-    try:
-        # Ищем профиль по коду верификации
-        profile = await get_user_profile_by_verification_code(verification_code)
-        
-        if profile:
-            # Обновляем данные профиля
-            await update_profile_verification(profile, user, update.effective_chat.id)
-            
-            await update.message.reply_html(
-                f"✅ Отлично! Ваш Telegram аккаунт успешно привязан к профилю {profile.user.username}\n\n"
-                f"Теперь вы будете получать уведомления об отслеживаемых событиях."
-            )
-        else:
-            await update.message.reply_text(
-                "❌ Неверный код верификации. "
-                "Проверьте код в вашем профиле на сайте и попробуйте снова."
-            )
-        
-    except Exception as e:
-        logger.error(f"Error verifying user: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка. Попробуйте позже."
-        )
+async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Получить новую ссылку для входа"""
+    await send_login_link(update)
 
 
 @sync_to_async
@@ -162,7 +139,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Проверить статус привязки"""
     user = update.effective_user
     
-    profile = await get_user_profile(user.id)
+    profile = await get_user_profile_by_telegram_id(user.id)
     if profile:
         if profile.is_telegram_verified:
             subscriptions_count = await get_subscriptions_count(profile)
@@ -174,12 +151,12 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         else:
             await update.message.reply_text(
                 "❌ Ваш аккаунт найден, но не подтверждён.\n"
-                "Используйте команду /verify <код> для подтверждения."
+                "Используйте команду /login для получения ссылки."
             )
     else:
         await update.message.reply_text(
             "❌ Ваш аккаунт не найден в системе.\n"
-            "Зарегистрируйтесь на сайте и привяжите Telegram."
+            "Используйте /login для входа на сайт."
         )
 
 
@@ -211,7 +188,7 @@ async def subscriptions_command(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text(message)
     else:
         await update.message.reply_text(
-            "❌ Сначала привяжите ваш аккаунт с помощью /verify <код>"
+            "❌ Сначала войдите на сайт через /login"
         )
 
 
@@ -225,14 +202,17 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     """Запуск бота"""
-    token = '8140856350:AAE1_7GCTr_I7nK7tWJh5zjO80E6zgPP7gU'
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    token = '8522111228:AAF5IShsFyp1Pjl7u6KJGO0y-6LmCgm53ck'
+    if not token:
+        raise RuntimeError('TELEGRAM_BOT_TOKEN is not set')
 
     application = Application.builder().token(token).build()
 
     # Добавляем обработчики команд
-    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("login", login_command))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("verify", verify_command))
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("subscriptions", subscriptions_command))
     

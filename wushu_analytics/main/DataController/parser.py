@@ -46,7 +46,7 @@ def parse_competitions():
  
     soup = BeautifulSoup(html, "html.parser")
     competitions = []
- 
+
     # Находим таблицу с соревнованиями
     table = soup.find("table", class_="table")
     if not table:
@@ -101,6 +101,8 @@ def parse_competitions():
  
     return competitions
  
+
+ 
  
 def parse_competition_detail(competition_url):
     """Парсит детальную информацию о соревновании"""
@@ -117,11 +119,6 @@ def parse_competition_detail(competition_url):
     title_tag = soup.find("h1") or soup.find("title")
     competition_name = title_tag.text.strip().split(" | ")[-1] if title_tag else "Unknown"
     
-    # Ищем регламент
-    regulation = ""
-    regulation_block = soup.find("div", class_="regulation") or soup.find("div", {"id": "regulation"})
-    if regulation_block:
-        regulation = regulation_block.get_text(strip=True)
     
     # Парсим категории по коврам
     categories = []
@@ -188,7 +185,6 @@ def parse_competition_detail(competition_url):
     
     return {
         "name": competition_name,
-        "regulation": regulation,
         "categories": categories
     }
 

@@ -22,7 +22,6 @@ urlpatterns = [
     path('auth/telegram/', views.telegram_auth_view, name='telegram_auth'),
     path('register/', views.register_view, name='register'),
     path('profile/', views.profile_view, name='profile'),
-    path('profile/generate-code/', views.generate_verification_code, name='generate_verification_code'),
     path('profile/unsubscribe/', views.unsubscribe_notification, name='unsubscribe_notification'),
     path('toggle-subscription/', views.toggle_subscription, name='toggle_subscription'),
     

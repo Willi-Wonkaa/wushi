@@ -28,6 +28,8 @@
                         </p>
                         {% if profile.telegram_username %}
                             <p><strong>Telegram:</strong> @{{ profile.telegram_username }}</p>
+                        {% elif profile.telegram_first_name or profile.telegram_last_name %}
+                            <p><strong>Telegram:</strong> {{ profile.telegram_first_name }} {{ profile.telegram_last_name }}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -35,15 +37,16 @@
                 {% if not profile.is_telegram_verified %}
                 <div class="alert alert-warning mt-3">
                     <h6><i class="bi bi-exclamation-triangle me-2"></i>Подключите Telegram для уведомлений</h6>
-                    <p class="mb-2">Чтобы получать уведомления об отслеживаемых соревнованиях, участниках и командах:</p>
+                    <p class="mb-2">Чтобы получать уведомления:</p>
                     <ol class="mb-2">
-                        <li>Нажмите кнопку "Сгенерировать код"</li>
-                        <li>Откройте Telegram и найдите нашего бота</li>
-                        <li>Отправьте боту команду: <code>/verify {{ profile.telegram_verification_code|default:"(сначала сгенерируйте код)" }}</code></li>
+                        <li>Откройте Telegram бота <strong>@{{ telegram_bot_username }}</strong></li>
+                        <li>Отправьте команду <code>/login</code> или <code>/start</code></li>
+                        <li>Откройте ссылку из бота — профиль подключится автоматически</li>
                     </ol>
-                    <button class="btn btn-warning" onclick="generateVerificationCode()">
-                        <i class="bi bi-key me-2"></i>Сгенерировать код
-                    </button>
+                    <a class="btn btn-warning" href="{{ telegram_bot_link }}" target="_blank" rel="noopener">
+                        <i class="bi bi-telegram me-2"></i>Открыть бота
+                    </a>
+                    <div class="text-muted small mt-2">Ссылка действует 5 минут.</div>
                 </div>
                 {% endif %}
             </div>
@@ -63,7 +66,7 @@
                                 <small class="text-muted">{{ subscription.get_subscription_type_display }}</small><br>
                                 {{ subscription.get_target_name }}
                             </div>
-                            <button class="btn btn-sm btn-outline-danger" onclick="unsubscribe({{ subscription.id }})">
+                            <button class="btn btn-sm btn-outline-danger subscription-unsubscribe" data-subscription-id="{{ subscription.id }}" type="button">
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
@@ -80,22 +83,6 @@
 </div>
 
 <script>
-function generateVerificationCode() {
-    fetch('/profile/generate-code/')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Произошла ошибка при генерации кода');
-        });
-}
-
 function unsubscribe(subscriptionId) {
     if (confirm('Вы уверены, что хотите отписаться от уведомлений?')) {
         fetch('/profile/unsubscribe/', {
@@ -120,5 +107,14 @@ function unsubscribe(subscriptionId) {
         });
     }
 }
+
+document.querySelectorAll('.subscription-unsubscribe').forEach(button => {
+    button.addEventListener('click', () => {
+        const subscriptionId = button.dataset.subscriptionId;
+        if (subscriptionId) {
+            unsubscribe(subscriptionId);
+        }
+    });
+});
 </script>
 {% endblock %}

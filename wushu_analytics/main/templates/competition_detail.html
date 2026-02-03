@@ -296,17 +296,23 @@
             </div>
             <div class="modal-body text-center py-4">
                 <i class="bi bi-telegram display-4 text-info mb-3"></i>
-                <p class="mb-0">Авторизуйтесь через ТГ бота для получения уведомлений</p>
+                <p class="mb-3">Авторизуйтесь через Telegram, чтобы получать уведомления.</p>
+                <a class="btn btn-primary" href="{{ telegram_bot_link }}" target="_blank" rel="noopener">
+                    Открыть бота @{{ telegram_bot_username }}
+                </a>
+                <div class="text-muted small mt-2">Ссылка для входа действует 5 минут.</div>
             </div>
         </div>
     </div>
 </div>
 
+<div id="telegramAuthFlag" data-has-telegram-auth="{{ has_telegram_auth|yesno:'true,false' }}" class="d-none"></div>
+
 <script>
 // User authorization state (from Django context)
-const isOverlord = {{ user.is_superuser|yesno:"true,false" }};
-const hasTelegramAuth = false; // Заглушка - позже будет проверка через ТГ
-const canReceiveNotifications = isOverlord || hasTelegramAuth;
+const telegramAuthFlag = document.getElementById('telegramAuthFlag');
+const hasTelegramAuth = telegramAuthFlag?.dataset.hasTelegramAuth === 'true';
+const canReceiveNotifications = hasTelegramAuth;
 
 // Share Modal Functions
 function showShareModal(categoryId, categoryName, competitionId) {

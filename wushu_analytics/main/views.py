@@ -1,14 +1,36 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 from datetime import date
-from .models import Competition, UserProfile, NotificationSubscription
-import sys
+from .models import Competition, UserProfile, NotificationSubscription, TelegramLoginToken
 import os
+
+
+def get_telegram_bot_context():
+    bot_username = os.getenv('TELEGRAM_BOT_USERNAME', 'wushu_analytics_bot')
+    bot_link = f"https://t.me/{bot_username}" if bot_username else "https://t.me"
+    return {
+        'telegram_bot_username': bot_username,
+        'telegram_bot_link': bot_link,
+    }
+
+
+def user_has_telegram_auth(user):
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    try:
+        profile = user.user_profile
+    except UserProfile.DoesNotExist:
+        return False
+    return profile.is_telegram_verified
 
 
 def dashboard(request):
@@ -103,6 +125,8 @@ def competitions(request):
     from .models import Competition
     from .DataController.parser import parse_competition_detail
     from datetime import date
+
+    has_telegram_auth = user_has_telegram_auth(request.user)
     
     # Получаем все соревнования, отсортированные по дате
     all_competitions = Competition.objects.all().order_by('-start_date')
@@ -138,7 +162,9 @@ def competitions(request):
                 'competition_status': competition_status,
                 'has_current_categories': has_current_categories,
                 'has_next_categories': has_next_categories,
-                'selected': True
+                'has_telegram_auth': has_telegram_auth,
+                'selected': True,
+                **get_telegram_bot_context(),
             }
             return render(request, "competition_detail.html", context)
         except Competition.DoesNotExist:
@@ -147,7 +173,9 @@ def competitions(request):
     context = {
         'competitions': all_competitions,
         'selected': False,
-        'today': date.today()
+        'today': date.today(),
+        'has_telegram_auth': has_telegram_auth,
+        **get_telegram_bot_context(),
     }
     return render(request, "competitions.html", context)
 
@@ -158,7 +186,7 @@ def regions(request):
     
     # Проверка доступа: только для авторизованных пользователей
     if not request.user.is_authenticated:
-        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/register/'>зарегистрируйтесь</a> для доступа.")
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/auth/telegram/'>войдите через Telegram</a> для доступа.")
     
     # Получаем статистику регионов из сводной таблицы
     regions_stats = RegionStatistics.objects.all().order_by('-gold_count', '-silver_count', '-bronze_count')
@@ -318,7 +346,7 @@ def athletes(request):
     
     # Проверка доступа: только для авторизованных пользователей
     if not request.user.is_authenticated:
-        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/register/'>зарегистрируйтесь</a> для доступа.")
+        return HttpResponseForbidden("Доступ запрещён. Пожалуйста, <a href='/auth/telegram/'>войдите через Telegram</a> для доступа.")
     
     # Получаем всех спортсменов со статистикой
     participants_with_stats = []
@@ -983,70 +1011,72 @@ def admin_delete_user(request):
 
 
 def telegram_auth_view(request):
-    """Аутентификация через секретный код от Telegram бота"""
-    if request.user.is_authenticated:
+    """Аутентификация через ссылку от Telegram бота"""
+    bot_context = get_telegram_bot_context()
+    token_value = request.GET.get('token') or request.POST.get('token')
+
+    if request.user.is_authenticated and not token_value:
         return redirect('dashboard')
-    
-    if request.method == 'POST':
-        secret_code = request.POST.get('secret_code', '').upper().strip()
-        
-        if not secret_code or len(secret_code) != 8:
-            messages.error(request, 'Неверный формат кода. Введите 8 символов.')
-            return render(request, 'telegram_auth.html')
-        
-        # Здесь должна быть проверка кода с ботом
-        # Временное решение для демонстрации
-        if secret_code == "DEMO1234":
-            # Создаем пользователя автоматически
-            username = f"telegram_user_{secret_code}"
-            email = f"telegram_{secret_code}@wushu.local"
-            
-            # Проверяем, существует ли пользователь
-            user = User.objects.filter(username=username).first()
-            if not user:
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=User.objects.make_random_password()
-                )
-            
-            # Создаем или получаем профиль
-            profile, created = UserProfile.objects.get_or_create(
-                user=user,
-                defaults={
-                    'telegram_id': 12345,  # Временно
-                    'telegram_username': 'demo_user',
-                    'telegram_chat_id': 12345,
-                    'is_telegram_verified': True
-                }
-            )
-            
-            login(request, user)
-            messages.success(request, 'Вы успешно вошли через Telegram!')
-            return redirect('profile')
+
+    if not token_value:
+        return render(request, 'telegram_auth.html', bot_context)
+
+    login_token = TelegramLoginToken.objects.filter(token=token_value).first()
+    if not login_token:
+        messages.error(request, 'Ссылка недействительна. Получите новую в Telegram боте.')
+        return render(request, 'telegram_auth.html', bot_context)
+
+    if login_token.expires_at < timezone.now():
+        login_token.delete()
+        messages.error(request, 'Ссылка истекла. Получите новую в Telegram боте.')
+        return render(request, 'telegram_auth.html', bot_context)
+
+    if request.user.is_authenticated:
+        if UserProfile.objects.filter(telegram_id=login_token.telegram_id).exclude(user=request.user).exists():
+            messages.error(request, 'Этот Telegram уже привязан к другому аккаунту.')
+            return render(request, 'telegram_auth.html', bot_context)
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        user = request.user
+    else:
+        profile = UserProfile.objects.filter(telegram_id=login_token.telegram_id).select_related('user').first()
+        if profile:
+            user = profile.user
         else:
-            messages.error(request, 'Неверный код. Проверьте код от Telegram бота.')
-    
-    return render(request, 'telegram_auth.html')
+            base_username = login_token.telegram_username or f"tg_{login_token.telegram_id}"
+            username = base_username
+            suffix = 1
+            while User.objects.filter(username=username).exists():
+                suffix += 1
+                username = f"{base_username}_{suffix}"
+            user = User.objects.create_user(
+                username=username,
+                email=f"telegram_{login_token.telegram_id}@wushu.local",
+                password=User.objects.make_random_password()
+            )
+            profile = UserProfile.objects.create(user=user)
+
+    profile.telegram_id = login_token.telegram_id
+    profile.telegram_username = login_token.telegram_username
+    profile.telegram_first_name = login_token.telegram_first_name
+    profile.telegram_last_name = login_token.telegram_last_name
+    profile.telegram_chat_id = login_token.telegram_chat_id
+    profile.is_telegram_verified = True
+    profile.save()
+
+    login_token.delete()
+
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    messages.success(request, 'Вы успешно вошли через Telegram!')
+    return redirect('profile')
 
 
 def register_view(request):
-    """Регистрация нового пользователя"""
+    """Регистрация отключена: направляем на Telegram вход"""
     if request.user.is_authenticated:
         return redirect('dashboard')
-    
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            # Создаем профиль пользователя
-            UserProfile.objects.create(user=user)
-            login(request, user)
-            return redirect('profile')
-    else:
-        form = UserCreationForm()
-    
-    return render(request, 'register.html', {'form': form})
+
+    messages.info(request, 'Регистрация через email отключена. Войдите через Telegram.')
+    return redirect('telegram_auth')
 
 
 @login_required
@@ -1061,27 +1091,10 @@ def profile_view(request):
     
     context = {
         'profile': profile,
-        'subscriptions': subscriptions
+        'subscriptions': subscriptions,
+        **get_telegram_bot_context(),
     }
     return render(request, 'profile.html', context)
-
-
-@login_required
-@require_POST
-def generate_verification_code(request):
-    """Генерация кода верификации Telegram"""
-    try:
-        profile = request.user.user_profile
-        code = profile.generate_verification_code()
-        return JsonResponse({
-            'success': True,
-            'code': code
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
 
 
 @login_required
