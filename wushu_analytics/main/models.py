@@ -70,7 +70,7 @@ class Participant(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'sity'],
+                fields=['name', 'region'],
                 name='unique_participant'
             )
         ]
@@ -139,11 +139,10 @@ class PerformanceCategoryBlock(models.Model):
 class Performance(models.Model):
     origin_title = models.TextField()
     participant = models.ForeignKey(Participant, on_delete=models.CASCADE)
-    performance_category_block = models.ForeignKey(PerformanceCategoryBlock, on_delete=models.SET_NULL, null=False)
+    performance_category_block = models.ForeignKey(PerformanceCategoryBlock, on_delete=models.SET_NULL, null=True)
 
     est_start_datetime = models.DateTimeField()
     real_start_datetime = models.DateTimeField(null=True, blank=True)
-    real_end_datetime = models.DateTimeField(null=True, blank=True)
     mark = models.FloatField(null=True, blank=True)
     place = models.IntegerField(null=True, blank=True)
     number_at_block = models.IntegerField(default=0)

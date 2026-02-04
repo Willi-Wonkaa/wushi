@@ -8,9 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import date
-from .models import Competition, UserProfile, NotificationSubscription, TelegramLoginToken
+from .models import Competition, UserProfile
 import os
 
+
+from  .main_logic.context_creators.dashboard import *
 
 def get_telegram_bot_context():
     bot_username = os.getenv('TELEGRAM_BOT_USERNAME', 'wushu_analytics_bot')
@@ -34,75 +36,9 @@ def user_has_telegram_auth(user):
 
 
 def dashboard(request):
-    from .models import Participant, Performance, Competition, RegionStatistics, AthleteStatistics
-    from django.db.models import Count, Avg, Q
-    
-    # Получаем все соревнования из БД
-    all_competitions = Competition.objects.all().order_by('-start_date')
-    
-    # Определяем актуальные соревнования (идущие сейчас)
-    today = date.today()
-    current_competitions = all_competitions.filter(
-        start_date__lte=today, 
-        end_date__gte=today
-    )
-    
-    # Определяем статус для каждого соревнования
-    competitions_with_status = []
-    for comp in all_competitions:
-        if comp.start_date > today:
-            status = 'скоро'
-            status_class = 'badge-warning'
-        elif comp.end_date < today:
-            status = 'прошли'
-            status_class = 'badge-secondary'
-        else:
-            status = 'идет'
-            status_class = 'badge-success'
-            
-        competitions_with_status.append({
-            'competition': comp,
-            'status': status,
-            'status_class': status_class
-        })
-    
-    # Получаем общую статистику
-    total_athletes = Participant.objects.count()
-    total_regions = Participant.objects.values('sity').distinct().count()
-    
-    # Статистика соревнований
-    upcoming_competitions = all_competitions.filter(start_date__gt=today).count()
-    past_competitions = all_competitions.filter(end_date__lt=today).count()
-    
-    # Общая статистика выступлений (исключая нули)
-    total_performances = Performance.objects.exclude(mark=0).count()
-    total_gold = Performance.objects.filter(place=1).count()
-    total_silver = Performance.objects.filter(place=2).count()
-    total_bronze = Performance.objects.filter(place=3).count()
-    
-    # Средний балл по всем выступлениям (исключая нули)
-    overall_avg_score = Performance.objects.exclude(mark=0).aggregate(avg=Avg('mark'))['avg'] or 0
-    
-    context = {
-        'current_competitions': current_competitions,
-        'all_competitions': competitions_with_status,
-        'has_current': current_competitions.exists(),
-        'has_all': all_competitions.exists(),
-        # Новая статистика
-        'total_athletes': total_athletes,
-        'total_regions': total_regions,
-        'current_competitions_count': current_competitions.count(),
-        'upcoming_competitions': upcoming_competitions,
-        'past_competitions': past_competitions,
-        'total_performances': total_performances,
-        'total_gold': total_gold,
-        'total_silver': total_silver,
-        'total_bronze': total_bronze,
-        'total_medals': total_gold + total_silver + total_bronze,
-        'overall_avg_score': round(overall_avg_score, 2) if overall_avg_score else 0,
-    }
-    
+    context = get_dashboard_context()
     return render(request, "dashboard.html", context)
+
 
 def analytics(request):
     """Страница аналитики - только для тренеров и администраторов"""
@@ -570,115 +506,11 @@ def update_data(request):
 
 
 def check_categories(request):
-    """Обновляет статистику регионов и спортсменов"""
-    from .models import Competition, Performance, Participant, RegionStatistics, AthleteStatistics
-    from django.db.models import Count, Avg, Q
-    from django.http import JsonResponse
-    from django.utils import timezone
-    
-    print("=== ОБНОВЛЕНИЕ СТАТИСТИКИ РЕГИОНОВ И СПОРТСМЕНОВ ===")
-    
-    try:
-        # Обновляем статистику регионов
-        print("\n1. Обновление статистики регионов...")
-        regions = Participant.objects.values_list('sity', flat=True).distinct().order_by('sity')
-        updated_regions = 0
-        
-        for region in regions:
-            if not region:
-                continue
-            
-            # Получаем выступления региона (исключая нулевые баллы)
-            region_performances = Performance.objects.filter(
-                participant__sity=region,
-                mark__isnull=False
-            ).exclude(mark=0)
-            
-            # Подсчет статистики
-            participants_count = Participant.objects.filter(sity=region).count()
-            competitions_count = region_performances.values('competition').distinct().count()
-            performances_count = region_performances.count()
-            
-            # Медали по полю place
-            gold_count = region_performances.filter(place=1).count()
-            silver_count = region_performances.filter(place=2).count()
-            bronze_count = region_performances.filter(place=3).count()
-            
-            # Средний балл (исключая нули)
-            avg_score = region_performances.aggregate(avg=Avg('mark'))['avg'] or 0
-            
-            # Обновляем или создаем запись
-            stats, created = RegionStatistics.objects.update_or_create(
-                region=region,
-                defaults={
-                    'participants_count': participants_count,
-                    'competitions_count': competitions_count,
-                    'performances_count': performances_count,
-                    'gold_count': gold_count,
-                    'silver_count': silver_count,
-                    'bronze_count': bronze_count,
-                    'avg_score': round(avg_score, 2) if avg_score else 0,
-                }
-            )
-            
-            if created or stats.last_updated < timezone.now() - timezone.timedelta(minutes=1):
-                updated_regions += 1
-                print(f"  ✓ {region}: {participants_count} уч., {gold_count}🥇 {silver_count}🥈 {bronze_count}🥉")
-        
-        # Обновляем статистику спортсменов
-        print(f"\n2. Обновление статистики спортсменов...")
-        participants = Participant.objects.all()
-        updated_athletes = 0
-        
-        for participant in participants:
-            # Выступления спортсмена (исключая нулевые баллы)
-            performances = Performance.objects.filter(
-                participant=participant,
-                mark__isnull=False
-            ).exclude(mark=0)
-            
-            # Подсчет статистики
-            competitions_count = performances.values('competition').distinct().count()
-            performances_count = performances.count()
-            
-            # Медали по полю place
-            gold_count = performances.filter(place=1).count()
-            silver_count = performances.filter(place=2).count()
-            bronze_count = performances.filter(place=3).count()
-            
-            # Средний балл (исключая нули)
-            avg_score = performances.aggregate(avg=Avg('mark'))['avg'] or 0
-            
-            # Обновляем или создаем запись
-            stats, created = AthleteStatistics.objects.update_or_create(
-                participant=participant,
-                defaults={
-                    'competitions_count': competitions_count,
-                    'performances_count': performances_count,
-                    'gold_count': gold_count,
-                    'silver_count': silver_count,
-                    'bronze_count': bronze_count,
-                    'avg_score': round(avg_score, 2) if avg_score else 0,
-                }
-            )
-            
-            if created or stats.last_updated < timezone.now() - timezone.timedelta(minutes=1):
-                updated_athletes += 1
-                if gold_count > 0 or silver_count > 0 or bronze_count > 0:
-                    print(f"  ✓ {participant.name}: {gold_count}🥇 {silver_count}🥈 {bronze_count}🥉")
-        
-        print(f"\n=== ОБНОВЛЕНИЕ ЗАВЕРШЕНО ===")
-        print(f"Обновлено регионов: {updated_regions}")
-        print(f"Обновлено спортсменов: {updated_athletes}")
-        
-        return JsonResponse({
-            'success': True, 
-            'message': f'Статистика обновлена. Регионов: {updated_regions}, спортсменов: {updated_athletes}'
+    print('hello')
+    return JsonResponse({
+        'success': True, 
+        'message': f'Статистика обновлена.'
         })
-        
-    except Exception as e:
-        print(f"Ошибка при обновлении статистики: {e}")
-        return JsonResponse({'success': False, 'message': str(e)})
 
 
 def full_sync(request):

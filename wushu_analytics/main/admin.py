@@ -44,8 +44,8 @@ class CompetitionAdmin(admin.ModelAdmin):
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'sity')
-    search_fields = ('name', 'sity')
+    list_display = ('name', 'region')
+    search_fields = ('name', 'region__region')
 
 
 @admin.register(DisciplineCategory)
@@ -62,7 +62,7 @@ class AgeCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Performance)
 class PerformanceAdmin(admin.ModelAdmin):
-    list_display = ('participant', 'competition', 'disciplines_category', 'mark')
-    list_filter = ('competition', 'disciplines_category')
-    search_fields = ('participant__name',)
-    raw_id_fields = ('participant', 'competition')
+    list_display = ('participant', 'performance_category_block', 'mark', 'place')
+    list_filter = ('performance_category_block',)
+    search_fields = ('participant__name', 'origin_title')
+    raw_id_fields = ('participant', 'performance_category_block')

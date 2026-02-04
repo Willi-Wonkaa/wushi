@@ -16,7 +16,7 @@ django.setup()
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from django.utils import timezone
-from main.models import UserProfile, TelegramLoginToken
+from main.models import UserProfile
 
 LOGIN_TOKEN_TTL_MINUTES = 5
 LOGIN_BASE_URL = os.getenv('SITE_BASE_URL', 'http://localhost:8000')

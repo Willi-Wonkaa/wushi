@@ -6,7 +6,37 @@ import pandas as pd
 import re
 import ssl
 from datetime import datetime
-from .dataWriter import write_competitions
+from .dataWriter import (
+    # Individual write functions
+    write_competition_level,
+    write_discipline_category,
+    write_age_category,
+    write_region,
+    write_participant,
+    write_competition,
+    write_performance_carpet,
+    write_performance_category_block,
+    write_performance,
+    write_user_profile,
+    write_coach,
+    write_tracked_participants,
+    write_tracked_competition,
+    write_tracked_region,
+    write_tracked_category_block,
+    write_tracked_carpet,
+    
+    # Update functions
+    update_region_statistics,
+    update_participant_statistics,
+    update_competition_statistics,
+    increment_region_stats,
+    increment_participant_stats,
+    increment_competition_stats,
+    recalculate_region_statistics,
+    recalculate_participant_statistics
+) 
+
+
  
 # Константы
 BASE_URL = "https://wushujudges.ru"
@@ -98,14 +128,32 @@ def parse_competitions():
     print(f"Found {len(competitions)} competitions:")
     for comp in competitions:
         print(f"- {comp['name']} ({comp['city']}) {comp['start_date']}-{comp['end_date']}")
- 
+
     return competitions
  
+ 
+
+def write_competitions(competitions):
+    for comp in competitions:
+        competition_obj, created = write_competition(
+            link=comp.get('link', ''),
+            name=comp['name'],
+            city=comp['city'],
+            start_date=comp['start_date'],
+            end_date=comp['end_date']
+        )
+        
+        action = "Создано" if created else "Обновлено"
+        print(f"{action} соревнование: {competition_obj.name}")
+               
 
  
+
+
  
+
 def parse_competition_detail(competition_url):
-    """Парсит детальную информацию о соревновании"""
+    """Парсит детальную информацию о соревновании с коврами и категориями"""
     print(f'Parsing competition detail from: {competition_url}')
     
     html = fetch_page(competition_url)
@@ -114,137 +162,145 @@ def parse_competition_detail(competition_url):
         return None
     
     soup = BeautifulSoup(html, "html.parser")
+    print(soup)
     
-    # Получаем название соревнования
-    title_tag = soup.find("h1") or soup.find("title")
-    competition_name = title_tag.text.strip().split(" | ")[-1] if title_tag else "Unknown"
+    # # Получаем название соревнования
+    # title_tag = soup.find("h1") or soup.find("title")
+    # competition_name = title_tag.text.strip().split(" | ")[-1] if title_tag else "Unknown"
     
+    # # Структура для хранения данных
+    # competition_data = {
+    #     "name": competition_name,
+    #     "carpets": []  # Список ковров с категориями и выступлениями
+    # }
     
-    # Парсим категории по коврам
-    categories = []
-    current_time = datetime.now()
+    # # Ищем все заголовки ковров (h3 с id="carpet-X")
+    # carpet_headers = soup.find_all("h3", id=lambda x: x and x.startswith("carpet-"))
     
-    # Ищем все блоки с категориями и сначала собираем их без статусов
-    temp_categories = []
-    
-    # Ищем все блоки с категориями
-    for category_block in soup.find_all("div", class_="d-flex"):
-        category_name_tag = category_block.find("h3")
-        if not category_name_tag:
-            continue
+    # for carpet_header in carpet_headers:
+    #     # Извлекаем номер ковра
+    #     carpet_id = carpet_header.get("id", "")
+    #     carpet_number = extract_carpet_number_from_id(carpet_id)
         
-        raw_category = category_name_tag.text.strip().replace("\n", " ")
-        time_range = category_block.find("p").text.strip() if category_block.find("p") else ""
+    #     if not carpet_number:
+    #         continue
+            
+    #     # Получаем текст заголовка (например, "Ковер 1")
+    #     carpet_text = carpet_header.text.strip()
         
-        # Сначала получаем участников
-        table = category_block.find_next("table")
-        if not table:
-            continue
+    #     # Инициализируем данные ковра
+    #     carpet_data = {
+    #         "carpet_number": carpet_number,
+    #         "carpet_text": carpet_text,
+    #         "category_blocks": []
+    #     }
         
-        headers = [th.text.strip() for th in table.find_all("th")]
-        rows = [[td.text.strip() for td in tr.find_all("td")] for tr in table.find_all("tr") if tr.find_all("td")]
+    #     # Ищем следующий блок с категориями после заголовка ковра
+    #     current_element = carpet_header.find_next_sibling()
         
-        participants = []
-        if "#" in headers and "Имя" in headers:
-            for row in rows:
-                if len(row) < 5 or not row[1] or not row[2]:
-                    continue
-                if row[0] == competition_name:
-                    continue
+    #     while current_element:
+    #         # Если мы встретили следующий ковер, выходим из цикла
+    #         if current_element.name == "h3" and current_element.get("id", "").startswith("carpet-"):
+    #             break
                 
-                participants.append({
-                    "place": row[0],
-                    "name": row[1],
-                    "region": row[2],
-                    "start_time": row[3],
-                    "score": row[4] if len(row) > 4 else ""
-                })
+    #         # Ищем блоки категорий (div с d-flex классом)
+    #         if current_element.name == "div" and "d-flex" in current_element.get("class", []):
+    #             category_block = parse_category_block(current_element, carpet_number)
+    #             if category_block:
+    #                 carpet_data["category_blocks"].append(category_block)
+            
+    #         current_element = current_element.find_next_sibling()
         
-        temp_categories.append({
-            "name": raw_category,
-            "time_range": time_range,
-            "participants": participants
-        })
+    #     competition_data["carpets"].append(carpet_data)
     
-    # Теперь определяем статусы для всех категорий
-    for temp_cat in temp_categories:
-        status = determine_category_status(
-            temp_cat["time_range"], 
-            current_time, 
-            temp_cat["participants"], 
-            temp_cat["name"], 
-            temp_categories
-        )
+    # print(f"Found {len(competition_data['carpets'])} carpets")
+    # for carpet in competition_data["carpets"]:
+    #     print(f"  Carpet {carpet['carpet_number']}: {len(carpet['category_blocks'])} category blocks")
+    
+    # return competition_data
+
+
+
+def extract_carpet_number_from_id(carpet_id):
+    """Извлекает номер ковра из id (например, 'carpet-1' -> 1)"""
+    import re
+    match = re.search(r'carpet-(\d+)', carpet_id)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+
+
+def parse_category_block(category_element, carpet_number):
+    """Парсит блок категории"""
+    # Ищем название категории
+    category_name_tag = category_element.find("h3")
+    if not category_name_tag:
+        return None
         
-        categories.append({
-            "name": temp_cat["name"],
-            "time_range": temp_cat["time_range"],
-            "status": status,
-            "participants": temp_cat["participants"]
-        })
+    category_name = category_name_tag.text.strip()
+    
+    # Ищем время проведения
+    time_element = category_element.find("p")
+    time_range = time_element.text.strip() if time_element else ""
+    
+    # Ищем таблицу с выступлениями
+    table = category_element.find_next("table")
+    if not table:
+        return None
+    
+    # Парсим таблицу
+    headers = [th.text.strip() for th in table.find_all("th")]
+    rows = [[td.text.strip() for td in tr.find_all("td")] for tr in table.find_all("tr") if tr.find_all("td")]
+    
+    participants = []
+    if "#" in headers and "Имя" in headers:
+        for row in rows:
+            if len(row) < 5 or not row[1] or not row[2]:
+                continue
+                
+            participants.append({
+                "place": row[0],
+                "name": row[1],
+                "region": row[2],
+                "start_time": row[3],
+                "score": row[4] if len(row) > 4 else ""
+            })
+    
+    # Определяем статус категории
+    status = determine_category_status_new(time_range, participants)
+    
+    # Парсим название категории для извлечения компонентов
+    parsed_category = parse_category_name(category_name)
     
     return {
-        "name": competition_name,
-        "categories": categories
+        "category_name": category_name,
+        "time_range": time_range,
+        "status": status,
+        "participants": participants,
+        "parsed": parsed_category  # содержит carpet, sex, min_age, max_age, discipline
     }
 
 
-def determine_category_status(time_range, current_time, participants, category_name, all_categories):
-    """Определяет статус категории на основе реального времени и последовательности"""
+def determine_category_status_new(time_range, participants):
+    """Определяет статус категории на основе участников"""
     if not participants:
         return "future"  # Нет участников - категория еще не началась
     
-    # Проверяем есть ли начавшиеся выступления (оценка "-" означает что еще не прошло)
-    participants_started = [p for p in participants 
-                           if p.get("score") 
-                           and p.get("score").strip() != "" 
-                           and p.get("score").strip() != "-"]
-    
-    # Проверяем все ли участники получили оценки
-    participants_with_mark = [p for p in participants 
+    # Проверяем есть ли оценки у участников
+    participants_with_score = [p for p in participants 
                              if p.get("score") 
                              and p.get("score").strip() != "" 
                              and p.get("score").strip() != "-"]
     
-    if len(participants_with_mark) == len(participants):
-        return "past"  # Все получили оценки - категория завершена
+    if len(participants_with_score) == len(participants):
+        return "completed"  # Все получили оценки - категория завершена
     
-    # Если есть хотя бы одно начавшееся выступление - категория идет
-    if participants_started:
-        return "current"
-    
-    # Извлекаем номер ковра из названия категории
-    carpet_number = extract_carpet_number(category_name)
-    
-    if carpet_number:
-        # Ищем предыдущие категории на этом же ковре
-        previous_categories = [cat for cat in all_categories 
-                              if extract_carpet_number(cat.get("name", "")) == carpet_number 
-                              and cat.get("name", "") != category_name]
-        
-        # Проверяем завершена ли предыдущая категория
-        previous_completed = True
-        for prev_cat in previous_categories:
-            prev_participants = prev_cat.get("participants", [])
-            prev_with_marks = [p for p in prev_participants 
-                              if p.get("score") 
-                              and p.get("score").strip() != "" 
-                              and p.get("score").strip() != "-"]
-            if len(prev_with_marks) < len(prev_participants):
-                previous_completed = False
-                break
-        
-        if not previous_completed:
-            return "future"  # Предыдущая категория еще не завершена
-        
-        # Если предыдущая категория завершена, эта скоро начнется
-        return "next"
-    
-    # Если не удалось определить номер ковра, используем старую логику
-    if participants_started:
+    if participants_with_score:
         return "current"  # Есть начавшиеся выступления
-    else:
-        return "future"   # Нет начавшихся выступлений
+    
+    return "future"  # Нет оценок - категория еще не началась
 
 
 def extract_carpet_number(category_name):
@@ -443,15 +499,15 @@ def full_sync_all_data():
     2. Для каждого соревнования скачивает все выступления
     3. Сохраняет участников, категории и выступления в БД
     """
-    from ..models import Competition, Participant, DisciplineCategory, AgeCategory, Performance
-    from .dataWriter import write_competitions
+    from ..models import Competition
+    from .dataWriter import write_competitions, write_competition_detail, update_competition_statistics, update_region_statistics, update_participant_statistics
     
     print("=" * 60)
     print("=== ПОЛНАЯ СИНХРОНИЗАЦИЯ ДАННЫХ ===")
     print("=" * 60)
     
     # 1. Получаем и сохраняем список соревнований
-    print("\n[1/3] Парсинг списка соревнований...")
+    print("\n[1/4] Парсинг списка соревнований...")
     competitions = parse_competitions()
     write_competitions(competitions)
     print(f"✓ Список соревнований обновлен: {len(competitions)} соревнований")
@@ -460,10 +516,11 @@ def full_sync_all_data():
     all_db_competitions = Competition.objects.all()
     total_competitions = all_db_competitions.count()
     
-    print(f"\n[2/3] Скачивание выступлений для {total_competitions} соревнований...")
+    print(f"\n[2/4] Скачивание выступлений для {total_competitions} соревнований...")
     
     total_performances = 0
     total_participants = 0
+    processed_competitions = 0
     
     for idx, comp in enumerate(all_db_competitions, 1):
         print(f"\n--- [{idx}/{total_competitions}] {comp.name} ---")
@@ -474,111 +531,19 @@ def full_sync_all_data():
         
         try:
             detail_data = parse_competition_detail(comp.link)
-            if not detail_data or not detail_data.get('categories'):
-                print("  ⚠ Нет данных о категориях")
+            if not detail_data or not detail_data.get('carpets'):
+                print("  ⚠ Нет данных о коврах")
                 continue
             
-            categories = detail_data['categories']
-            print(f"  Найдено категорий: {len(categories)}")
-            
-            for category in categories:
-                category_name = category.get('name', '')
-                participants = category.get('participants', [])
+            # Записываем детальную информацию
+            result = write_competition_detail(comp, detail_data)
+            if result:
+                total_participants += result['participants']
+                total_performances += result['performances']
+                processed_competitions += 1
                 
-                if not participants:
-                    continue
-                
-                # Парсим название категории
-                parsed = parse_category_name(category_name)
-                
-                # Получаем или создаем дисциплину
-                discipline_obj = None
-                if parsed['discipline']:
-                    discipline_obj, _ = DisciplineCategory.objects.get_or_create(
-                        name=parsed['discipline']
-                    )
-                
-                # Получаем или создаем возрастную категорию
-                age_category_obj = None
-                if parsed['sex'] and parsed['min_age'] and parsed['max_age']:
-                    age_category_obj, _ = AgeCategory.objects.get_or_create(
-                        min_ages=parsed['min_age'],
-                        max_ages=parsed['max_age'],
-                        sex=parsed['sex']
-                    )
-                
-                # Обрабатываем каждого участника
-                for participant in participants:
-                    participant_name = participant.get('name', '').strip()
-                    participant_region = participant.get('region', '').strip()
-                    start_time = participant.get('start_time', '')
-                    score = participant.get('score', '')
-                    
-                    if not participant_name or not participant_region:
-                        continue
-                    
-                    # Получаем или создаем участника
-                    participant_obj, created = Participant.objects.get_or_create(
-                        name=participant_name,
-                        sity=participant_region
-                    )
-                    if created:
-                        total_participants += 1
-                    
-                    # Парсим время начала
-                    est_start = None
-                    if start_time:
-                        try:
-                            time_parts = start_time.split(':')
-                            if len(time_parts) >= 2:
-                                from datetime import datetime, timedelta
-                                est_start = datetime.combine(
-                                    comp.start_date,
-                                    datetime.strptime(start_time, '%H:%M').time()
-                                )
-                        except:
-                            est_start = datetime.combine(comp.start_date, datetime.min.time())
-                    else:
-                        from datetime import datetime
-                        est_start = datetime.combine(comp.start_date, datetime.min.time())
-                    
-                    # Парсим оценку
-                    mark = None
-                    if score and score.strip() and score.strip() != '-':
-                        try:
-                            mark = float(score.replace(',', '.'))
-                        except:
-                            mark = None
-                    
-                    # Парсим место
-                    place_value = None
-                    place_str = participant.get('place', '')
-                    if place_str and place_str.strip():
-                        try:
-                            place_value = int(place_str.strip())
-                        except:
-                            place_value = None
-                    
-                    # Создаем или обновляем выступление
-                    try:
-                        perf_obj, created = Performance.objects.update_or_create(
-                            competition=comp,
-                            participant=participant_obj,
-                            ages_category=age_category_obj,
-                            disciplines_category=discipline_obj,
-                            defaults={
-                                'carpet': parsed['carpet'],
-                                'origin_title': category_name,
-                                'est_start_datetime': est_start,
-                                'mark': mark,
-                                'place': place_value
-                            }
-                        )
-                        if created:
-                            total_performances += 1
-                    except Exception as e:
-                        print(f"    ⚠ Ошибка при создании выступления: {e}")
-                        continue
+            # Обновляем статистику соревнования
+            update_competition_statistics(comp)
             
             print(f"  ✓ Обработано")
             
@@ -589,85 +554,34 @@ def full_sync_all_data():
         # Небольшая задержка между соревнованиями
         time.sleep(SLEEP_TIME)
     
-    # Обновляем сводную статистику после синхронизации
-    print("\n--- Обновление сводной статистики ---")
+    # 3. Обновляем сводную статистику после синхронизации
+    print(f"\n[3/4] Обновление статистики регионов...")
     try:
-        from main.models import RegionStatistics, AthleteStatistics
-        from django.db.models import Count, Avg
-        
-        # Обновляем статистику регионов
-        regions = Participant.objects.values_list('sity', flat=True).distinct()
-        for region in regions:
-            if not region:
-                continue
-            
-            region_performances = Performance.objects.filter(
-                participant__sity=region,
-                mark__isnull=False
-            ).exclude(mark=0)
-            
-            participants_count = Participant.objects.filter(sity=region).count()
-            competitions_count = region_performances.values('competition').distinct().count()
-            performances_count = region_performances.count()
-            gold_count = region_performances.filter(place=1).count()
-            silver_count = region_performances.filter(place=2).count()
-            bronze_count = region_performances.filter(place=3).count()
-            avg_score = region_performances.aggregate(avg=Avg('mark'))['avg'] or 0
-            
-            RegionStatistics.objects.update_or_create(
-                region=region,
-                defaults={
-                    'participants_count': participants_count,
-                    'competitions_count': competitions_count,
-                    'performances_count': performances_count,
-                    'gold_count': gold_count,
-                    'silver_count': silver_count,
-                    'bronze_count': bronze_count,
-                    'avg_score': round(avg_score, 2) if avg_score else 0,
-                }
-            )
-        
-        # Обновляем статистику спортсменов
-        participants = Participant.objects.all()
-        for participant in participants:
-            performances = Performance.objects.filter(
-                participant=participant,
-                mark__isnull=False
-            ).exclude(mark=0)
-            
-            competitions_count = performances.values('competition').distinct().count()
-            performances_count = performances.count()
-            gold_count = performances.filter(place=1).count()
-            silver_count = performances.filter(place=2).count()
-            bronze_count = performances.filter(place=3).count()
-            avg_score = performances.aggregate(avg=Avg('mark'))['avg'] or 0
-            
-            AthleteStatistics.objects.update_or_create(
-                participant=participant,
-                defaults={
-                    'competitions_count': competitions_count,
-                    'performances_count': performances_count,
-                    'gold_count': gold_count,
-                    'silver_count': silver_count,
-                    'bronze_count': bronze_count,
-                    'avg_score': round(avg_score, 2) if avg_score else 0,
-                }
-            )
-        
-        print("✓ Статистика обновлена")
-        
+        update_region_statistics()
+        print("✓ Статистика регионов обновлена")
     except Exception as e:
-        print(f"✗ Ошибка обновления статистики: {e}")
+        print(f"✗ Ошибка обновления статистики регионов: {e}")
+    
+    print(f"\n[4/4] Обновление статистики участников...")
+    try:
+        update_participant_statistics()
+        print("✓ Статистика участников обновлена")
+    except Exception as e:
+        print(f"✗ Ошибка обновления статистики участников: {e}")
     
     print("\n" + "=" * 60)
     print("=== СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА ===")
-    print(f"Соревнований: {total_competitions}")
+    print(f"Соревнований обработано: {processed_competitions}/{total_competitions}")
     print(f"Новых участников: {total_participants}")
     print(f"Новых выступлений: {total_performances}")
     print("=" * 60)
     
     return {
-        'competitions': total_competitions,
+        'competitions_processed': processed_competitions,
+        'competitions_total': total_competitions,
         'participants': total_participants,
         'performances': total_performances
     }
+
+
+
